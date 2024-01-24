@@ -4,7 +4,7 @@ api_platform:
              JWT:
                 name: Authorization
                 type: header
-    title: Hello API Platform
+    title: Ti Péi Gourmand
     version: 1.0.0
     formats:
         jsonld: ['application/ld+json']
