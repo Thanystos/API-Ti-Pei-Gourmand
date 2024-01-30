@@ -14,7 +14,6 @@ use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Serializer\Annotation\Groups;
-use Vich\UploaderBundle\Mapping\Annotation as Vich;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
@@ -33,7 +32,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         new Post(
             denormalizationContext: ['groups' => ['user:write']],
             name: 'register_user',
-            uriTemplate: '/users/{id}',
+            uriTemplate: '/users',
             controller: 'App\Controller\UserController::registerUser'
         ),
         new Delete(
@@ -76,11 +75,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:write'])]
     private ?string $realName = null;
 
-    #[ORM\Column(length: 255)]
-    #[Groups(['user:write'])]
-    #[Vich\UploadableField(mapping: 'users', fileNameProperty: 'imageName')]
-    private ?string $image = null;
-
     #[Assert\NotBlank(message: "Le numéro de téléphone doit être spécifié.")]
     #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
@@ -95,6 +89,10 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
     #[Groups(['user:read', 'user:write'])]
     private ?\DateTimeInterface $hireDate = null;
+
+    // Remove signifie que si le User est supprimé, l'image associée dans l'entité Image sera supprimée aussi
+    #[ORM\OneToOne(inversedBy: 'user', cascade: ['persist', 'remove'])]
+    private ?Image $userImage = null;
 
     public function getId(): ?int
     {
@@ -184,21 +182,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getImage(): ?string
-    {
-        return $this->image;
-    }
-
-    /**
-     * @param File|\Symfony\Component\HttpFoundation\File\UploadedFile|null $imageFile
-     */
-    public function setImage(string $image): static
-    {
-        $this->image = $image;
-
-        return $this;
-    }
-
     public function getPhoneNumber(): ?string
     {
         return $this->phoneNumber;
@@ -235,13 +218,25 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    // Juste après la création d'un User
+    public function getUserImage(): ?Image
+    {
+        return $this->userImage;
+    }
+
+    public function setUserImage(?Image $userImage): static
+    {
+        $this->userImage = $userImage;
+
+        return $this;
+    }
+
     #[ORM\PrePersist]
     public function setDefaultsOnPersist()
     {
-        // J'attribue l'image par défaut pour les nouveaux Users
-        if ($this->image === null) {
-            $this->image = '%kernel.project_dir%/public/images/users/default_user_image.png';
+        // J'attribue l'imageName par défaut pour les nouveaux Users
+        if ($this->userImage === null) {
+            $this->userImage = new Image();
+            $this->userImage->setImageName('%kernel.project_dir%/public/images/users/default_user_image.png');
         }
     }
 }

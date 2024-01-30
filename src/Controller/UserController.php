@@ -15,7 +15,6 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
-//#[AsController] Permet l'autoconfiguration du controleur
 class UserController
 {
     private Security $security;
@@ -29,7 +28,7 @@ class UserController
     }
 
     // Méthode qui peut traiter POST et PUT et qui se différencie en fonction de la présence de l'id dans les paramètres
-    private function processUserRequest(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, ValidatorInterface $validator, $idUpdatedUser = null): JsonResponse
+    private function processUserRequest(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, ValidatorInterface $validator, $idUpdatedUser = null, $hasImage = false): JsonResponse
     {
 
         // On extrait les informations de la requête
@@ -51,13 +50,6 @@ class UserController
             $user = $userRepository->find($idUpdatedUser);
         }
 
-        // Si l'image a été définie côté client
-        if (isset($requestData['image']) && $requestData['image'] !== "") {
-
-            // Je change l'image du User par celle de la requête
-            $user->setImage($requestData['image']);
-        }
-
         // Si le password a été défini côté client
         if (isset($requestData['password']) && $requestData['password'] !== "") {
 
@@ -73,11 +65,19 @@ class UserController
             ? DateTime::createFromFormat('Y-m-d', $requestData['hireDate'])
             : null;
 
-        // Utilisation du service de journalisation
+        // Si une image a été spécifié et qu'on utilise la méthode PUT
+        // Si requestData['hasImage'] est null ou n'est pas définie alors false. True dans les autres cas
+        if ($requestData['hasImage'] ?? false) {
 
-        // Enregistrement d'un message dans les logs
-        // $this->logger->info('Contenu de $requestData["hireDate"]: ' . $requestData['hireDate']);
+            // On récupère l'image destinée à être remplacée
+            $userImage = $user->getUserImage();
 
+            // Puis son id
+            $userImageId = $userImage->getId();
+
+            // On supprime le lien entre le User et l'image destinée à être remplacée
+            $user->setUserImage(null);
+        }
 
         // Je change le username du User par celui de la requête
         $user->setUsername($requestData['username'])
@@ -118,20 +118,31 @@ class UserController
         // J'enregistre mon nouveau User dans la bdd
         $entityManager->persist($user);
 
-        // Je mets à jour la bdd
-        $entityManager->flush();
+        try {
+            // Je mets à jour la bdd
+            $entityManager->flush();
+        } catch (\Exception $e) {
+            return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
 
         // Pour plus de lisibilité, je stocke le retour de mes getters dans des variables
         $id = $user->getId();
         $username = $user->getUsername();
         $realName = $user->getRealName();
-        $image = $user->getImage();
         $phoneNumber = $user->getPhoneNumber();
         $email = $user->getEmail();
         $hireDate = $user->getHireDate();
 
+        $isConnected = null;
+
+        // Si on est dans la méthode PUT
         if ($idUpdatedUser) {
+
+            // On récupère l'utilisateur actuellement connecté
             $loggedInUser = $this->security->getUser();
+
+            // Est vraie si l'utilisateur connecté est aussi celui qui est en train d'être modifié
             $isConnected = ($loggedInUser && $loggedInUser->getUserIdentifier() === $requestData['username']);
 
             // Vérification si l'utilisateur modifié est le même que celui connecté
@@ -150,10 +161,13 @@ class UserController
                 'id' => $id,
                 'username' => $username,
                 'realName' => $realName,
-                'image' => $image,
                 'phoneNumber' => $phoneNumber,
                 'email' => $email,
                 'hireDate' => $hireDate,
+
+                // Ici je renvoie, si nécessaire, l'id de l'image à remplacer
+                'userImageId' => isset($requestData['hasImage']) ? ($requestData['hasImage'] ? $userImageId : null) : null,
+
             ]
         ];
 
@@ -167,7 +181,7 @@ class UserController
     public function updateUser(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, ValidatorInterface $validator): JsonResponse
     {
 
-        // Je récupère l'id passé en paramètre de la requête
+        // Je récupère l'id de l'utisateur à modifier passé en paramètre de la requête
         $idUpdatedUser = $request->get('id');
 
         // Méthode pouvant traiter la requête POST ET PUT

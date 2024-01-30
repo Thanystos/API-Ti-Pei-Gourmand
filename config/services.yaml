@@ -26,8 +26,5 @@ services:
     App\Controller\UserController:
         tags: ['controller.service_arguments']
 
-    #App\EventListener\UserEventListener:
-    #    arguments:
-    #        $defaultImagePath: '%kernel.project_dir%/public/images/users/default_user_image.png'
-    #    tags:
-    #        - { name: doctrine.event_listener, event: prePersist, entity: 'App\Entity\User' }
+    App\Controller\ImageController:
+        tags: ['controller.service_arguments']
