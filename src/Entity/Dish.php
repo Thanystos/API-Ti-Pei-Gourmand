@@ -39,15 +39,11 @@ class Dish
     #[ORM\Column]
     private ?bool $isAllergen = null;
 
-    #[ORM\ManyToMany(targetEntity: Ingredient::class, mappedBy: 'dishes')]
-    private Collection $ingredients;
-
     #[ORM\OneToMany(mappedBy: 'dish', targetEntity: DishIngredient::class)]
     private Collection $dishIngredients;
 
     public function __construct()
     {
-        $this->ingredients = new ArrayCollection();
         $this->dishIngredients = new ArrayCollection();
     }
 
@@ -136,33 +132,6 @@ class Dish
     public function setIsAllergen(bool $isAllergen): static
     {
         $this->isAllergen = $isAllergen;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Ingredient>
-     */
-    public function getIngredients(): Collection
-    {
-        return $this->ingredients;
-    }
-
-    public function addIngredient(Ingredient $ingredient): static
-    {
-        if (!$this->ingredients->contains($ingredient)) {
-            $this->ingredients->add($ingredient);
-            $ingredient->addDish($this);
-        }
-
-        return $this;
-    }
-
-    public function removeIngredient(Ingredient $ingredient): static
-    {
-        if ($this->ingredients->removeElement($ingredient)) {
-            $ingredient->removeDish($this);
-        }
 
         return $this;
     }

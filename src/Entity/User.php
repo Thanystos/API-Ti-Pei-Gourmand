@@ -5,14 +5,16 @@ namespace App\Entity;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Delete;
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
-use Symfony\Component\Security\Core\User\UserInterface;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -57,11 +59,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:update', 'user:write'])]
     private ?string $username = null;
 
-    #[Assert\NotBlank(message: "Le ou les rôles doivent être spécifiés.")]
-    #[ORM\Column]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
-    private array $roles = [];
-
     /**
      * @var string The hashed password
      */
@@ -72,27 +69,50 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[Assert\NotBlank(message: "Le nom doit être spécifié.")]
     #[ORM\Column(length: 255, nullable: true, options: ["default" => ""])]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
     private ?string $realName = null;
 
     #[Assert\NotBlank(message: "Le numéro de téléphone doit être spécifié.")]
     #[ORM\Column(length: 255)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
     private ?string $phoneNumber = null;
 
     #[Assert\NotBlank(message: "L'email doit être spécifié.")]
     #[ORM\Column(length: 255)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
     private ?string $email = null;
 
-    #[Assert\NotBlank(message: "La date d'embauche doit être spécifiée.")]
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
     private ?\DateTimeInterface $hireDate = null;
 
     // Remove signifie que si le User est supprimé, l'image associée dans l'entité Image sera supprimée aussi
     #[ORM\OneToOne(inversedBy: 'user', cascade: ['persist', 'remove'])]
     private ?Image $userImage = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
+    private ?string $employmentStatus = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
+    private ?string $comments = null;
+
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
+    private ?\DateTimeInterface $endDate = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    #[Groups(['user:read', 'user:update', 'user:write'])]
+    private ?string $socialSecurityNumber = null;
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserRole::class)]
+    private Collection $userRoles;
+
+    public function __construct()
+    {
+        $this->userRoles = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -124,26 +144,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getUsername(): string
     {
         return $this->getUserIdentifier();
-    }
-
-    /**
-     * @see UserInterface
-     */
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-
-        // Je retire le fait d'attribuer automatiquement ce role à un nouvel utilisateur
-        //$roles[] = 'ROLE_USER';
-
-        return array_unique($roles);
-    }
-
-    public function setRoles(array $roles): static
-    {
-        $this->roles = $roles;
-
-        return $this;
     }
 
     /**
@@ -238,5 +238,99 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $this->userImage = new Image();
             $this->userImage->setImageName('%kernel.project_dir%/public/images/users/default_user_image.png');
         }
+    }
+
+    public function getEmploymentStatus(): ?string
+    {
+        return $this->employmentStatus;
+    }
+
+    public function setEmploymentStatus(?string $employmentStatus): static
+    {
+        $this->employmentStatus = $employmentStatus;
+
+        return $this;
+    }
+
+    public function getComments(): ?string
+    {
+        return $this->comments;
+    }
+
+    public function setComments(?string $comments): static
+    {
+        $this->comments = $comments;
+
+        return $this;
+    }
+
+    public function getEndDate(): ?\DateTimeInterface
+    {
+        return $this->endDate;
+    }
+
+    public function setEndDate(?\DateTimeInterface $endDate): static
+    {
+        $this->endDate = $endDate;
+
+        return $this;
+    }
+
+    public function getSocialSecurityNumber(): ?string
+    {
+        return $this->socialSecurityNumber;
+    }
+
+    public function setSocialSecurityNumber(?string $socialSecurityNumber): static
+    {
+        $this->socialSecurityNumber = $socialSecurityNumber;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UserRole>
+     */
+    public function getUserRoles(): Collection
+    {
+        return $this->userRoles;
+    }
+
+    public function addUserRole(UserRole $userRole): static
+    {
+        if (!$this->userRoles->contains($userRole)) {
+            $this->userRoles->add($userRole);
+            $userRole->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUserRole(UserRole $userRole): static
+    {
+        if ($this->userRoles->removeElement($userRole)) {
+            // set the owning side to null (unless already changed)
+            if ($userRole->getUser() === $this) {
+                $userRole->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+
+    /**
+     * @see UserInterface
+     */
+    public function getRoles(): array
+    {
+
+        /* 
+            La méthode map itère sur chaque élément de mon tableau userRoles.
+            $userRole représente chaque entrée de userRoles, à partir de laquelle nous récupérons le nom du rôle qui y est contenu.
+            La fonction fn(UserRole $userRole) => $userRole->getRole()->getName() extrait le nom du rôle pour chaque élément.
+            En utilisant array_unique, nous nous assurons que les noms de rôles sont uniques dans le tableau résultant.
+        */
+        return array_unique($this->userRoles->map(fn (UserRole $userRole) => $userRole->getRole()->getName())->toArray());
     }
 }

@@ -35,34 +35,22 @@ class UserController
         $requestData = json_decode($request->getContent(), true);
 
         // Si l'id n'est pas présent dans les paramètres il s'agit du traitement d'une requête POST
-        if (!$idUpdatedUser) {
+        $user = !$idUpdatedUser ? new User() : $entityManager->getRepository(User::class)->find($idUpdatedUser);
 
-            // Créez un nouvel utilisateur si $user n'est pas fourni (cas de la méthode POST)
-            $user = new User();
+        // Si le password a été défini côté client, on le hash et on l'assigne à l'utilisateur
+        $user->setPassword(
+            isset($requestData['password']) && $requestData['password'] !== ""
+                ? $passwordHasher->hashPassword($user, $requestData['password'])
+                : $user->getPassword()
+        );
 
-            // Sinon c'est celui de PUT
-        } else {
 
-            // J'appelle le repository des User
-            $userRepository = $entityManager->getRepository(User::class);
-
-            // Je me sers de la méthode permettant de trouver un user d'id passé en param
-            $user = $userRepository->find($idUpdatedUser);
-        }
-
-        // Si le password a été défini côté client
-        if (isset($requestData['password']) && $requestData['password'] !== "") {
-
-            // Je me sers du bundle pour hasher le password
-            $hashedPassword = $passwordHasher->hashPassword($user, $requestData['password']);
-
-            // Je change le realname du User par celui de la requête
-            $user->setPassword($hashedPassword);
-        }
-
-        // Je convertis le String de date en "vraie" Date
-        $datedHireDate = ($requestData['hireDate'] !== "")
+        $hireDate = isset($requestData['hireDate']) && ($requestData['hireDate'] !== "NaN-NaN-NaN" && $requestData['hireDate'] !== "")
             ? DateTime::createFromFormat('Y-m-d', $requestData['hireDate'])
+            : null;
+
+        $endDate = isset($requestData['endDate']) && ($requestData['endDate'] !== "NaN-NaN-NaN" && $requestData['endDate'] !== "")
+            ? DateTime::createFromFormat('Y-m-d', $requestData['endDate'])
             : null;
 
         // Si une image a été spécifié et qu'on utilise la méthode PUT
@@ -79,6 +67,7 @@ class UserController
             $user->setUserImage(null);
         }
 
+        // CHAMPS OBLIGATOIRES
         // Je change le username du User par celui de la requête
         $user->setUsername($requestData['username'])
 
@@ -94,8 +83,21 @@ class UserController
             // Je change l'email du User par celui de la requête
             ->setEmail($requestData['email'])
 
-            // Je change le hireDate du User par celui mise en forme Date de la requête
-            ->setHireDate($datedHireDate);
+            // CHAMPS FACULTATIFS
+            // Je change la date d'embauche du User par celle de la requête si elle existe. Null sinon
+            ->setHireDate($hireDate)
+
+            // Je change la date de fin de contrat du User par celle de la requête si elle existe. Null sinon
+            ->setEndDate($endDate)
+
+            // Je change le statut du contrat du User par celui de la requête si il existe. Null sinon
+            ->setEmploymentStatus($requestData['employmentStatus'] ?? null)
+
+            // Je change le statut du contrat du User par celui de la requête si il existe. Null sinon
+            ->setSocialSecurityNumber($requestData['socialSecurityNumber'] ?? null)
+
+            // Je change le statut du contrat du User par celui de la requête si il existe. Null sinon
+            ->setComments($requestData['comments'] ?? null);
 
         // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
         $errors = $validator->validate($user);
@@ -133,6 +135,10 @@ class UserController
         $phoneNumber = $user->getPhoneNumber();
         $email = $user->getEmail();
         $hireDate = $user->getHireDate();
+        $endDate = $user->getendDate();
+        $employmentStatus = $user->getEmploymentStatus();
+        $socialSecurityNumber = $user->getSocialSecurityNumber();
+        $comments = $user->getComments();
 
         $isConnected = null;
 
@@ -164,6 +170,10 @@ class UserController
                 'phoneNumber' => $phoneNumber,
                 'email' => $email,
                 'hireDate' => $hireDate,
+                'endDate' => $endDate,
+                'employmentStatus' => $employmentStatus,
+                'socialSecurityNumber' => $socialSecurityNumber,
+                'comments' => $comments,
 
                 // Ici je renvoie, si nécessaire, l'id de l'image à remplacer
                 'userImageId' => isset($requestData['hasImage']) ? ($requestData['hasImage'] ? $userImageId : null) : null,

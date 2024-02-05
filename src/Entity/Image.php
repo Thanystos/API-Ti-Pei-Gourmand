@@ -96,12 +96,13 @@ class Image
 
     public function setUser(?User $user): static
     {
-        // unset the owning side of the relation if necessary
+
+        // Permet de dissocier les entités et de casser la relation
         if ($user === null && $this->user !== null) {
             $this->user->setUserImage(null);
         }
 
-        // set the owning side of the relation if necessary
+        // Permet d'associer les entités et d'établir la relation
         if ($user !== null && $user->getUserImage() !== $this) {
             $user->setUserImage($this);
         }
