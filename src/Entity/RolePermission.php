@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use App\Repository\RolePermissionRepository;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: RolePermissionRepository::class)]
 class RolePermission
@@ -17,6 +18,7 @@ class RolePermission
     private ?Role $role = null;
 
     #[ORM\ManyToOne(inversedBy: 'rolePermissions')]
+    #[Groups(['rolePermission:read'])]
     private ?Permission $permission = null;
 
     public function getId(): ?int

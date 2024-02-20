@@ -13,16 +13,22 @@ class RoleFixtures extends Fixture
     {
         // Création de deux rôles
         $adminRole = new Role();
-        $adminRole->setName('ROLE_ADMIN');
+        $adminRole->setName('Administrateur');
 
         $manager->persist($adminRole);
         $this->addReference('role_admin', $adminRole);
 
         $cuisinierRole = new Role();
-        $cuisinierRole->setName('ROLE_CUISINIER');
+        $cuisinierRole->setName('Cuisinier');
 
         $manager->persist($cuisinierRole);
         $this->addReference('role_cuisinier', $cuisinierRole);
+
+        $serveurRole = new Role();
+        $serveurRole->setName('Serveur');
+
+        $manager->persist($serveurRole);
+        $this->addReference('role_serveur', $serveurRole);
 
         $manager->flush();
     }

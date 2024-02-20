@@ -42,16 +42,27 @@ class ImageController
 
             // Je crée une nouvelle image pour ma table Image
             $image = new Image();
-            if ($imageFile instanceof UploadedFile) {
 
-                // J'associe le fichier à cette nouvelle entrée
-                $image->setImageFile($imageFile);
+            // Si un fichier image a été envoyé
+            if (isset($imageFile)) {
+                if ($imageFile instanceof UploadedFile) {
+
+                    // J'associe le fichier à cette nouvelle entrée
+                    $image->setImageFile($imageFile);
+                } else {
+                    throw new \Exception('Aucun fichier image fourni.');
+                }
+
+                // J'associe le nom de fichier à cette nouvelle entrée
+                $image->setImageName($imageFile->getClientOriginalName());
+
+                // Si aucun fichier image n'a été envoyé
             } else {
-                throw new \Exception('Aucun fichier image fourni.');
+
+                // Je pointe l'image par défaut
+                $image->setImageName('%kernel.project_dir%/public/images/users/default_user_image.png');
             }
 
-            // J'associe le nom de fichier à cette nouvelle entrée
-            $image->setImageName($imageFile->getClientOriginalName());
 
             // J'associe cette nouvelle image à mon User
             $image->setUser($user);
@@ -93,6 +104,8 @@ class ImageController
                 // J'envoie la réponse d'erreur au client
                 throw new JsonResponse(['error' => 'Image non trouvée.'], JsonResponse::HTTP_NOT_FOUND);
             }
+
+            $image->setUser(null);
 
             // Supprime l'image
             $entityManager->remove($image);

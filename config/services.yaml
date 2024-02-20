@@ -10,6 +10,9 @@ services:
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        public: false
+
+    Symfony\Component\HttpFoundation\Request: ~
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -28,3 +31,26 @@ services:
 
     App\Controller\ImageController:
         tags: ['controller.service_arguments']
+
+    App\Controller\UserRoleController:
+        tags: ['controller.service_arguments']
+
+    App\Controller\RoleController:
+        tags: ['controller.service_arguments']
+
+    # --------------------------------------------------------------------
+
+    App\Service\EntityCreatorService:
+        arguments:
+            $entityManager: '@doctrine.orm.default_entity_manager'
+            $serializer: '@serializer'
+            $validator: '@validator'
+            $passwordHasher: '@security.password_hasher'
+
+    App\Service\EntityUpdaterService:
+        arguments:
+            $entityManager: '@doctrine.orm.default_entity_manager'
+            $serializer: '@serializer'
+            $passwordHasher: '@security.password_hasher'
+            $security: '@security.helper'
+            $jwtManager: '@lexik_jwt_authentication.jwt_manager'

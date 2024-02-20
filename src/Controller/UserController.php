@@ -6,210 +6,49 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use App\Entity\User;
 use App\Repository\UserRepository;
-use DateTime;
+use App\Service\EntityCreatorService;
+use App\Service\EntityUpdaterService;
 use Doctrine\ORM\EntityManagerInterface;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class UserController
 {
-    private Security $security;
-    private JWTTokenManagerInterface $jwtManager;
-    private LoggerInterface $logger;
-    public function __construct(Security $security, JWTTokenManagerInterface $jwtManager, LoggerInterface $logger)
+    private $request;
+    private $entityUpdater;
+    private $entityCreator;
+    private $logger;
+
+
+    public function __construct(Request $request, EntityUpdaterService $entityUpdater, EntityCreatorService $entityCreator, LoggerInterface $logger)
     {
-        $this->security = $security;
-        $this->jwtManager = $jwtManager;
+        $this->request = $request;
+        $this->entityUpdater = $entityUpdater;
+        $this->entityCreator = $entityCreator;
         $this->logger = $logger;
     }
 
-    // Méthode qui peut traiter POST et PUT et qui se différencie en fonction de la présence de l'id dans les paramètres
-    private function processUserRequest(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, ValidatorInterface $validator, $idUpdatedUser = null, $hasImage = false): JsonResponse
-    {
-
-        // On extrait les informations de la requête
-        $requestData = json_decode($request->getContent(), true);
-
-        // Si l'id n'est pas présent dans les paramètres il s'agit du traitement d'une requête POST
-        $user = !$idUpdatedUser ? new User() : $entityManager->getRepository(User::class)->find($idUpdatedUser);
-
-        // Si le password a été défini côté client, on le hash et on l'assigne à l'utilisateur
-        $user->setPassword(
-            isset($requestData['password']) && $requestData['password'] !== ""
-                ? $passwordHasher->hashPassword($user, $requestData['password'])
-                : $user->getPassword()
-        );
-
-
-        $hireDate = isset($requestData['hireDate']) && ($requestData['hireDate'] !== "NaN-NaN-NaN" && $requestData['hireDate'] !== "")
-            ? DateTime::createFromFormat('Y-m-d', $requestData['hireDate'])
-            : null;
-
-        $endDate = isset($requestData['endDate']) && ($requestData['endDate'] !== "NaN-NaN-NaN" && $requestData['endDate'] !== "")
-            ? DateTime::createFromFormat('Y-m-d', $requestData['endDate'])
-            : null;
-
-        // Si une image a été spécifié et qu'on utilise la méthode PUT
-        // Si requestData['hasImage'] est null ou n'est pas définie alors false. True dans les autres cas
-        if ($requestData['hasImage'] ?? false) {
-
-            // On récupère l'image destinée à être remplacée
-            $userImage = $user->getUserImage();
-
-            // Puis son id
-            $userImageId = $userImage->getId();
-
-            // On supprime le lien entre le User et l'image destinée à être remplacée
-            $user->setUserImage(null);
-        }
-
-        // CHAMPS OBLIGATOIRES
-        // Je change le username du User par celui de la requête
-        $user->setUsername($requestData['username'])
-
-            // Je change les roles du User par ceux de la requête
-            ->setRoles($requestData['roles'])
-
-            // Je change le realname du User par celui de la requête
-            ->setRealname($requestData['realName'])
-
-            // Je change le phoneNumber du User par celui de la requête
-            ->setPhoneNumber($requestData['phoneNumber'])
-
-            // Je change l'email du User par celui de la requête
-            ->setEmail($requestData['email'])
-
-            // CHAMPS FACULTATIFS
-            // Je change la date d'embauche du User par celle de la requête si elle existe. Null sinon
-            ->setHireDate($hireDate)
-
-            // Je change la date de fin de contrat du User par celle de la requête si elle existe. Null sinon
-            ->setEndDate($endDate)
-
-            // Je change le statut du contrat du User par celui de la requête si il existe. Null sinon
-            ->setEmploymentStatus($requestData['employmentStatus'] ?? null)
-
-            // Je change le statut du contrat du User par celui de la requête si il existe. Null sinon
-            ->setSocialSecurityNumber($requestData['socialSecurityNumber'] ?? null)
-
-            // Je change le statut du contrat du User par celui de la requête si il existe. Null sinon
-            ->setComments($requestData['comments'] ?? null);
-
-        // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
-        $errors = $validator->validate($user);
-
-        // Si il y a au moins une erreur
-        if (count($errors) > 0) {
-            $errorMessages = [];
-
-            // Pour chacune d'entres elles
-            foreach ($errors as $error) {
-
-                // Je stocke le message d'erreur lié dans mon tableau d'erreurs
-                $errorMessages[] = $error->getMessage();
-            }
-
-            // Je renvoie au client ce tableau et le code d'erreur approprié
-            return new JsonResponse(['errors' => $errorMessages], JsonResponse::HTTP_BAD_REQUEST);
-        }
-
-        // J'enregistre mon nouveau User dans la bdd
-        $entityManager->persist($user);
-
-        try {
-            // Je mets à jour la bdd
-            $entityManager->flush();
-        } catch (\Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_INTERNAL_SERVER_ERROR);
-        }
-
-
-        // Pour plus de lisibilité, je stocke le retour de mes getters dans des variables
-        $id = $user->getId();
-        $username = $user->getUsername();
-        $realName = $user->getRealName();
-        $phoneNumber = $user->getPhoneNumber();
-        $email = $user->getEmail();
-        $hireDate = $user->getHireDate();
-        $endDate = $user->getendDate();
-        $employmentStatus = $user->getEmploymentStatus();
-        $socialSecurityNumber = $user->getSocialSecurityNumber();
-        $comments = $user->getComments();
-
-        $isConnected = null;
-
-        // Si on est dans la méthode PUT
-        if ($idUpdatedUser) {
-
-            // On récupère l'utilisateur actuellement connecté
-            $loggedInUser = $this->security->getUser();
-
-            // Est vraie si l'utilisateur connecté est aussi celui qui est en train d'être modifié
-            $isConnected = ($loggedInUser && $loggedInUser->getUserIdentifier() === $requestData['username']);
-
-            // Vérification si l'utilisateur modifié est le même que celui connecté
-            // Si le userIdentifier existe et qu'il est le même que celui de la requête
-            if ($isConnected) {
-
-                // Je créée un nouveau token d'identification
-                $newToken = $this->jwtManager->create($loggedInUser);
-            }
-        }
-        // Je crée la réponse qui sera envoyée au client
-        $responseData = [
-            'message' => 'Utilisateur mis à jour avec succès',
-            'token' => $isConnected ? $newToken : null,
-            'user' => [
-                'id' => $id,
-                'username' => $username,
-                'realName' => $realName,
-                'phoneNumber' => $phoneNumber,
-                'email' => $email,
-                'hireDate' => $hireDate,
-                'endDate' => $endDate,
-                'employmentStatus' => $employmentStatus,
-                'socialSecurityNumber' => $socialSecurityNumber,
-                'comments' => $comments,
-
-                // Ici je renvoie, si nécessaire, l'id de l'image à remplacer
-                'userImageId' => isset($requestData['hasImage']) ? ($requestData['hasImage'] ? $userImageId : null) : null,
-
-            ]
-        ];
-
-        // J'envoie la réponse au client
-        return new JsonResponse($responseData, JsonResponse::HTTP_OK);
-    }
-
-
     // Met à jour les informations d'un User
     #[Route('/api/users/{id}', name: 'update_user', methods: ['PUT'])]
-    public function updateUser(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, ValidatorInterface $validator): JsonResponse
+    public function updateUser($id): JsonResponse
     {
 
-        // Je récupère l'id de l'utisateur à modifier passé en paramètre de la requête
-        $idUpdatedUser = $request->get('id');
-
-        // Méthode pouvant traiter la requête POST ET PUT
-        return $this->processUserRequest($request, $entityManager, $passwordHasher, $validator, $idUpdatedUser);
+        // Utilisation de mon service pour mettre à jour mon User
+        return $this->entityUpdater->updateEntity($this->request, User::class, ['user:read'], ['user:write'], [], true, $id);
     }
 
     // Crée un nouveau User avec les informations passées en paramètre
     #[Route('/api/users', name: 'register_user', methods: ['POST'])]
-    public function registerUser(Request $request, EntityManagerInterface $entityManager, UserPasswordHasherInterface $passwordHasher, ValidatorInterface $validator): JsonResponse
+    public function registerUser(): JsonResponse
     {
 
-        // Méthode pouvant traiter la requête POST ET PUT
-        return $this->processUserRequest($request, $entityManager, $passwordHasher, $validator);
+        // Utilisation de mon service pour créer mon User
+        return $this->entityCreator->createEntity($this->request, User::class, ['user:read'], ['user:write'], [], true);
     }
 
     // Supprime un ou plusieurs User dans les usernames ont été passés en paramètre
     #[Route('/api/users', name: 'delete_user', methods: ['DELETE'])]
-    public function deleteUser(Request $request, EntityManagerInterface $entityManager, UserRepository $userRepository)
+    public function deleteUser(Request $request, UserRepository $userRepository, EntityManagerInterface $entityManager)
     {
         try {
             // J'exploite les paramètres de la requête
@@ -237,6 +76,8 @@ class UserController
                     throw new \RuntimeException(sprintf('L\'utilisateur "%s" n\'existe pas.', $username));
                 }
 
+                $deletedUserIds[] = $user->getId();
+
                 // Sinon je supprime ce User
                 $entityManager->remove($user);
             }
@@ -245,7 +86,10 @@ class UserController
             $entityManager->flush();
 
             // J'envoie la réponse au client
-            return new JsonResponse(['message' => 'Utilisateurs supprimés avec succès'], JsonResponse::HTTP_OK);
+            return new JsonResponse([
+                'message' => 'Utilisateurs supprimés avec succès',
+                'user' => $deletedUserIds,
+            ], JsonResponse::HTTP_OK);
         } catch (\InvalidArgumentException $e) {
             return new JsonResponse(['error' => $e->getMessage()], JsonResponse::HTTP_BAD_REQUEST);
         } catch (\RuntimeException $e) {

@@ -6,20 +6,37 @@ use App\Repository\RoleRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Put;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: RoleRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            normalizationContext: ['groups' => ['role:read']]
+        ),
+        new Put(
+            normalizationContext: ['groups' => ['role:read']],
+            denormalizationContext: ['groups' => ['role:write']],
+            name: 'update_role',
+            uriTemplate: '/roles/{id}',
+            controller: 'App\Controller\RoleController::updateRole'
+        )
+    ]
+)]
 class Role
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['role:read', 'role:write', 'user:read', 'userRole:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['role:read', 'role:write', 'user:read'])]
     private ?string $name = null;
-
-    #[ORM\ManyToMany(targetEntity: User::class, mappedBy: 'roles')]
-    private Collection $users;
 
     #[ORM\OneToMany(mappedBy: 'role', targetEntity: UserRole::class)]
     private Collection $userRoles;
@@ -29,7 +46,6 @@ class Role
 
     public function __construct()
     {
-        $this->users = new ArrayCollection();
         $this->userRoles = new ArrayCollection();
         $this->rolePermissions = new ArrayCollection();
     }
@@ -49,14 +65,6 @@ class Role
         $this->name = $name;
 
         return $this;
-    }
-
-    /**
-     * @return Collection<int, User>
-     */
-    public function getUsers(): Collection
-    {
-        return $this->users;
     }
 
     /**

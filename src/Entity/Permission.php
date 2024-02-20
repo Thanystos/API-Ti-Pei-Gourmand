@@ -6,8 +6,18 @@ use App\Repository\PermissionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
 
 #[ORM\Entity(repositoryClass: PermissionRepository::class)]
+#[ApiResource(
+    operations: [
+        new GetCollection(
+            normalizationContext: ['groups' => ['permission:read']]
+        ),
+    ]
+)]
 class Permission
 {
     #[ORM\Id]
@@ -16,17 +26,14 @@ class Permission
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
+    #[Groups(['rolePermission:read', 'permission:read'])]
     private ?string $name = null;
-
-    #[ORM\ManyToMany(targetEntity: Role::class, mappedBy: 'permissions')]
-    private Collection $roles;
 
     #[ORM\OneToMany(mappedBy: 'permission', targetEntity: RolePermission::class)]
     private Collection $rolePermissions;
 
     public function __construct()
     {
-        $this->roles = new ArrayCollection();
         $this->rolePermissions = new ArrayCollection();
     }
 
@@ -43,33 +50,6 @@ class Permission
     public function setName(string $name): static
     {
         $this->name = $name;
-
-        return $this;
-    }
-
-    /**
-     * @return Collection<int, Role>
-     */
-    public function getRoles(): Collection
-    {
-        return $this->roles;
-    }
-
-    public function addRole(Role $role): static
-    {
-        if (!$this->roles->contains($role)) {
-            $this->roles->add($role);
-            $role->addPermission($this);
-        }
-
-        return $this;
-    }
-
-    public function removeRole(Role $role): static
-    {
-        if ($this->roles->removeElement($role)) {
-            $role->removePermission($this);
-        }
 
         return $this;
     }

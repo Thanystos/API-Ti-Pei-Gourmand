@@ -13,26 +13,28 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use Doctrine\ORM\Mapping\OrderBy;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
-#[ORM\HasLifecycleCallbacks]
 #[ApiResource(
     operations: [
         new GetCollection(
-            normalizationContext: ['groups' => ['user:read']]
+            normalizationContext: ['groups' => ['user:read']],
         ),
         new Put(
-            denormalizationContext: ['groups' => ['user:update']],
+            denormalizationContext: ['groups' => ['user:write']],
+            normalizationContext: ['groups' => ['user:read']],
             name: 'update_user',
             uriTemplate: '/users/{id}',
             controller: 'App\Controller\UserController::updateUser'
         ),
         new Post(
             denormalizationContext: ['groups' => ['user:write']],
+            normalizationContext: ['groups' => ['user:read']],
             name: 'register_user',
             uriTemplate: '/users',
             controller: 'App\Controller\UserController::registerUser'
@@ -44,19 +46,19 @@ use Symfony\Component\Validator\Constraints as Assert;
         )
     ]
 )]
-
 #[UniqueEntity('username', message: 'Ce pseudonyme est déjà utilisé.')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user:read'])]
+    #[Groups(['user:read', 'userRole:read'])]
+    #[OrderBy(['id' => 'DESC'])]
     private ?int $id = null;
 
     #[Assert\NotBlank(message: "Le pseudonyme doit être spécifié.")]
-    #[ORM\Column(length: 180, unique: true)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[ORM\Column(length: 180)]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $username = null;
 
     /**
@@ -69,21 +71,21 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[Assert\NotBlank(message: "Le nom doit être spécifié.")]
     #[ORM\Column(length: 255, nullable: true, options: ["default" => ""])]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $realName = null;
 
     #[Assert\NotBlank(message: "Le numéro de téléphone doit être spécifié.")]
     #[ORM\Column(length: 255)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $phoneNumber = null;
 
     #[Assert\NotBlank(message: "L'email doit être spécifié.")]
     #[ORM\Column(length: 255)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $email = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?\DateTimeInterface $hireDate = null;
 
     // Remove signifie que si le User est supprimé, l'image associée dans l'entité Image sera supprimée aussi
@@ -91,22 +93,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?Image $userImage = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $employmentStatus = null;
 
     #[ORM\Column(type: Types::TEXT, nullable: true)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $comments = null;
 
     #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?\DateTimeInterface $endDate = null;
 
     #[ORM\Column(length: 20, nullable: true)]
-    #[Groups(['user:read', 'user:update', 'user:write'])]
+    #[Groups(['user:read', 'user:write'])]
     private ?string $socialSecurityNumber = null;
 
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserRole::class)]
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserRole::class, cascade: ['remove'])]
+    #[Groups(['user:read'])]
     private Collection $userRoles;
 
     public function __construct()
@@ -230,14 +233,11 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    #[ORM\PrePersist]
-    public function setDefaultsOnPersist()
+
+    public function setDefaultImage()
     {
-        // J'attribue l'imageName par défaut pour les nouveaux Users
-        if ($this->userImage === null) {
-            $this->userImage = new Image();
-            $this->userImage->setImageName('%kernel.project_dir%/public/images/users/default_user_image.png');
-        }
+        $this->userImage = new Image();
+        $this->userImage->setImageName('%kernel.project_dir%/public/images/users/default_user_image.png');
     }
 
     public function getEmploymentStatus(): ?string
