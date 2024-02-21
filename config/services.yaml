@@ -41,16 +41,15 @@ services:
     # --------------------------------------------------------------------
 
     App\Service\EntityCreatorService:
-        arguments:
-            $entityManager: '@doctrine.orm.default_entity_manager'
-            $serializer: '@serializer'
-            $validator: '@validator'
-            $passwordHasher: '@security.password_hasher'
+        autowire: true
 
     App\Service\EntityUpdaterService:
-        arguments:
-            $entityManager: '@doctrine.orm.default_entity_manager'
-            $serializer: '@serializer'
-            $passwordHasher: '@security.password_hasher'
-            $security: '@security.helper'
+        autowire: true
+        arguments:   
             $jwtManager: '@lexik_jwt_authentication.jwt_manager'
+
+    App\Service\EntityDeleterService:
+        autowire: true
+    
+    App\Service\QueryService:
+        autowire: true

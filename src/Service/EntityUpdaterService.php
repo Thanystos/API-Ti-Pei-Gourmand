@@ -38,12 +38,11 @@ class EntityUpdaterService
         $this->entityManager->getConnection()->setNestTransactionsWithSavepoints(true);
     }
 
-    public function updateEntity(Request $request, string $entityClassName, array $serializationGroups, array $deserializationGroups, array $serializationContext = [], bool $isUserEntity = false, $id): JsonResponse
+    public function updateEntity(Request $request, string $entityClassName, array $serializationGroups, array $deserializationGroups, array $serializationContext = [], bool $isUserEntity = false, int $id): JsonResponse
     {
         try {
 
             $this->entityManager->beginTransaction();
-            $this->logger->info('je suis un user ? : ' . $isUserEntity);
 
             // Je récupère l'id de l'entité à modifier passé en paramètre de la requête
             $idUpdatedEntity = $id;
@@ -111,8 +110,6 @@ class EntityUpdaterService
 
             if ($isUserEntity) {
 
-                $this->logger->info('jentre dans la gestion des images');
-
                 // Récupération de l'ID de l'image utilisateur
                 $userImageId = $entityToUpdate->getUserImage()->getId();
 
@@ -131,7 +128,7 @@ class EntityUpdaterService
             $responseData['message'] = 'Entité mise à jour avec succès';
             $responseData[strtolower(basename($entityClassName))] = UtilsService::serializeEntity($entityToUpdate, $serializationGroups, $this->serializer);
 
-            return new JsonResponse($responseData, JsonResponse::HTTP_OK);
+            return new JsonResponse($responseData, UtilsService::HTTP_OK);
         } catch (\RuntimeException $e) {
 
             // Une erreur a été levée, j'annule la transaction

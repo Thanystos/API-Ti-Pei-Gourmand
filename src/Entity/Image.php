@@ -22,9 +22,9 @@ use Symfony\Component\Validator\Constraints as Assert;
             controller: 'App\Controller\ImageController::registerImage'
         ),
         new Delete(
-            name: 'remove_image',
+            name: 'delete_image',
             uriTemplate: '/images/{id}',
-            controller: 'App\Controller\ImageController::removeImage'
+            controller: 'App\Controller\ImageController::deleteImage'
         )
     ]
 )]
@@ -43,6 +43,7 @@ class Image
             mimeTypesMessage: "Veuillez télécharger une image valide (JPG, PNG, GIF)"
         )
     ]
+
     #[Vich\UploadableField(mapping: 'user_thumbnail', fileNameProperty: 'imageName')]
     private ?File $imageFile = null;
 

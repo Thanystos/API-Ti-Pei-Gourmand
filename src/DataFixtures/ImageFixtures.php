@@ -18,6 +18,18 @@ class ImageFixtures extends Fixture implements DependentFixtureInterface
 
         $manager->persist($image1);
 
+        $image2 = new Image();
+        $image2->setImageName("Image_2")
+            ->setUser($this->getReference('deykyana'));
+
+        $manager->persist($image2);
+
+        $image3 = new Image();
+        $image3->setImageName("Image_3")
+            ->setUser($this->getReference('mathieu'));
+
+        $manager->persist($image3);
+
         $manager->flush();
     }
 

@@ -11,7 +11,7 @@ class RoleFixtures extends Fixture
 
     public function load(ObjectManager $manager)
     {
-        // Création de deux rôles
+        // Création de trois rôles
         $adminRole = new Role();
         $adminRole->setName('Administrateur');
 
