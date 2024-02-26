@@ -23,8 +23,9 @@ class EntityUpdaterService
     private $security;
     private $jwtManager;
     private $logger;
+    private $imageProcessor;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, UserPasswordHasherInterface $passwordHasher, Security $security, JWTManager $jwtManager, LoggerInterface $logger)
+    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, UserPasswordHasherInterface $passwordHasher, Security $security, JWTManager $jwtManager, LoggerInterface $logger, ImageProcessorService $imageProcessor)
     {
         $this->entityManager = $entityManager;
         $this->serializer = $serializer;
@@ -32,13 +33,14 @@ class EntityUpdaterService
         $this->security = $security;
         $this->jwtManager = $jwtManager;
         $this->logger = $logger;
+        $this->imageProcessor = $imageProcessor;
 
 
         // Activer les points de sauvegarde pour les transactions
         $this->entityManager->getConnection()->setNestTransactionsWithSavepoints(true);
     }
 
-    public function updateEntity(Request $request, string $entityClassName, array $serializationGroups, array $deserializationGroups, array $serializationContext = [], bool $isUserEntity = false, int $id): JsonResponse
+    public function updateEntity(Request $request, string $entityClassName, array $serializationGroups, array $deserializationGroups, array $serializationContext = [], bool $isUserEntity = false, int $id, bool $processImage = false): JsonResponse
     {
         try {
 
@@ -55,46 +57,62 @@ class EntityUpdaterService
                 throw new \RuntimeException(sprintf('L\'entité avec l\'id %d n\'existe pas.', $idUpdatedEntity));
             }
 
-            // On utilise le groupe de deserialization pour construire et hydrater notre entité
-            $updatedEntity = $this->serializer->deserialize($request->getContent(), $entityClassName, 'json', ['groups' => $deserializationGroups] + $serializationContext);
+            // Si je suis dans la requête du traîtement exclusif à l'image
+            if ($processImage) {
 
-            // Obtient la classe de l'entité
-            $entityClass = new \ReflectionClass($entityToUpdate);
+                // Je récupère le fichier image envoyé dans la requête
+                $imageFile = $request->files->get('image');
 
-            // Obtient toutes les propriétés de la classe
-            $properties = $entityClass->getProperties();
+                // Je me sers de mon service pour traiter l'image
+                $this->imageProcessor->updateImage($entityToUpdate, $imageFile);
+            } else {
+                // On utilise le groupe de deserialization pour construire et hydrater notre entité
+                $updatedEntity = $this->serializer->deserialize($request->getContent(), $entityClassName, 'json', ['groups' => $deserializationGroups] + $serializationContext);
 
-            // Itère sur chaque propriété
-            foreach ($properties as $property) {
-                // Obtient le nom de la propriété
-                $propertyName = $property->getName();
+                // Obtient la classe de l'entité
+                $entityClass = new \ReflectionClass($entityToUpdate);
 
-                // Construit les noms des méthodes getter et setter correspondantes
-                $getterMethod = 'get' . ucfirst($propertyName);
-                $setterMethod = 'set' . ucfirst($propertyName);
+                // Obtient toutes les propriétés de la classe
+                $properties = $entityClass->getProperties();
 
-                // Vérifie si les méthodes getter et setter existent dans la classe
-                if ($entityClass->hasMethod($getterMethod) && $entityClass->hasMethod($setterMethod)) {
-                    // Obtient les valeurs actuelles des propriétés
-                    $currentValue = $entityToUpdate->{$getterMethod}();
-                    $updatedValue = $updatedEntity->{$getterMethod}();
+                // Itère sur chaque propriété
+                foreach ($properties as $property) {
 
-                    // Compare les valeurs actuelles avec les nouvelles valeurs
-                    if ($currentValue !== $updatedValue) {
-                        // Si les password sont différents
-                        if ($propertyName === 'password') {
+                    // Obtient le nom de la propriété
+                    $propertyName = $property->getName();
 
-                            // Et que celui de la modification n'est pas vide
-                            if ($updatedValue !== "") {
+                    // Construit les noms des méthodes getter et setter correspondantes
+                    $getterMethod = 'get' . ucfirst($propertyName);
+                    $setterMethod = 'set' . ucfirst($propertyName);
 
-                                // On le hash avant de le set
-                                $hashedPassword = $this->passwordHasher->hashPassword($entityToUpdate, $updatedValue);
-                                $entityToUpdate->{$setterMethod}($hashedPassword);
-                            }
-                        } else {
-                            if ($propertyName !== 'userImage') {
-                                // Met à jour la valeur de la propriété
-                                $entityToUpdate->{$setterMethod}($updatedValue);
+                    // Vérifie si les méthodes getter et setter existent dans la classe
+                    if ($entityClass->hasMethod($getterMethod) && $entityClass->hasMethod($setterMethod)) {
+
+                        // Obtient les valeurs actuelles des propriétés
+                        $currentValue = $entityToUpdate->{$getterMethod}();
+                        $updatedValue = $updatedEntity->{$getterMethod}();
+
+                        // Compare les valeurs actuelles avec les nouvelles valeurs
+                        if ($currentValue !== $updatedValue) {
+
+                            // Si les password sont différents
+                            if ($propertyName === 'password') {
+
+                                // Et que celui de la modification n'est pas vide
+                                if ($updatedValue !== "") {
+
+                                    // On le hash avant de le set
+                                    $hashedPassword = $this->passwordHasher->hashPassword($entityToUpdate, $updatedValue);
+                                    $entityToUpdate->{$setterMethod}($hashedPassword);
+                                }
+                            } else {
+
+                                // On ne touche pas au nom de l'image ici. Le traitement se fait dans le service approprié
+                                if ($propertyName !== 'imageName') {
+
+                                    // Met à jour la valeur de la propriété
+                                    $entityToUpdate->{$setterMethod}($updatedValue);
+                                }
                             }
                         }
                     }
@@ -110,9 +128,6 @@ class EntityUpdaterService
 
             if ($isUserEntity) {
 
-                // Récupération de l'ID de l'image utilisateur
-                $userImageId = $entityToUpdate->getUserImage()->getId();
-
                 // Vérification si l'utilisateur connecté est celui qui est en train d'être modifié
                 $loggedInUser = $this->security->getUser();
                 $isConnected = ($loggedInUser && $loggedInUser->getUserIdentifier() === $entityToUpdate->getUsername());
@@ -122,7 +137,6 @@ class EntityUpdaterService
 
                 // Ajout des données spécifiques à l'entité User à la réponse
                 $responseData['token'] = $newToken;
-                $responseData['userImageId'] = $userImageId;
             }
 
             $responseData['message'] = 'Entité mise à jour avec succès';

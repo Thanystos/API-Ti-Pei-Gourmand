@@ -47,6 +47,14 @@ class UserController
         return $this->entityCreator->createEntity($this->request, User::class, ['user:read'], ['user:write'], [], true);
     }
 
+    #[Route('api/users/{id}', name: 'register_user_image', methods: ['POST'])]
+    public function registerUserImage($id, Request $request): JsonResponse
+    {
+
+        // Utilisation de mon service pour créer mon User
+        return $this->entityUpdater->updateEntity($request, User::class, [], [], [], true, $id, true);
+    }
+
     // Supprime un ou plusieurs User dans les usernames ont été passés en paramètre
     #[Route('/api/users', name: 'delete_user', methods: ['DELETE'])]
     public function deleteUser(): JsonResponse

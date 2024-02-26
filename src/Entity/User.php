@@ -39,6 +39,11 @@ use Symfony\Component\Validator\Constraints as Assert;
             uriTemplate: '/users',
             controller: 'App\Controller\UserController::registerUser'
         ),
+        new Post(
+            name: 'register_user_image',
+            uriTemplate: '/users',
+            controller: 'App\Controller\UserController::registerUserImage'
+        ),
         new Delete(
             name: 'delete_user',
             uriTemplate: '/users',
@@ -88,10 +93,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Groups(['user:read', 'user:write'])]
     private ?\DateTimeInterface $hireDate = null;
 
-    // Remove signifie que si le User est supprimé, l'image associée dans l'entité Image sera supprimée aussi
-    #[ORM\OneToOne(inversedBy: 'user', cascade: ['persist', 'remove'])]
-    private ?Image $userImage = null;
-
     #[ORM\Column(length: 255, nullable: true)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $employmentStatus = null;
@@ -111,6 +112,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserRole::class, cascade: ['remove'])]
     #[Groups(['user:read'])]
     private Collection $userRoles;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $imageName = null;
 
     public function __construct()
     {
@@ -221,25 +225,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    public function getUserImage(): ?Image
-    {
-        return $this->userImage;
-    }
-
-    public function setUserImage(?Image $userImage): static
-    {
-        $this->userImage = $userImage;
-
-        return $this;
-    }
-
-
-    public function setDefaultImage()
-    {
-        $this->userImage = new Image();
-        $this->userImage->setImageName('%kernel.project_dir%/public/images/users/default_user_image.png');
-    }
-
     public function getEmploymentStatus(): ?string
     {
         return $this->employmentStatus;
@@ -332,5 +317,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             En utilisant array_unique, nous nous assurons que les noms de rôles sont uniques dans le tableau résultant.
         */
         return array_unique($this->userRoles->map(fn (UserRole $userRole) => $userRole->getRole()->getName())->toArray());
+    }
+
+    public function getImageName(): ?string
+    {
+        return $this->imageName;
+    }
+
+    public function setImageName(?string $imageName): static
+    {
+        $this->imageName = $imageName;
+
+        return $this;
     }
 }
