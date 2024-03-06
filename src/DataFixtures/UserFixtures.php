@@ -40,7 +40,8 @@ class UserFixtures extends Fixture
             ->setEndDate($endDate1)
             ->setEmploymentStatus('CDD')
             ->setSocialSecurityNumber('0123456789876')
-            ->setComments('Bon élément');
+            ->setComments('Bon élément')
+            ->setImageName('profil.jpg');
 
         $manager->persist($user1);
         $this->addReference('thanystos', $user1);
@@ -55,7 +56,8 @@ class UserFixtures extends Fixture
             ->setEndDate($endDate2)
             ->setEmploymentStatus('CDI')
             ->setSocialSecurityNumber('1857496254845')
-            ->setComments('Mauvais élément');
+            ->setComments('Mauvais élément')
+            ->setImageName('profil.jpg');
 
         $manager->persist($user2);
         $this->addReference('deykyana', $user2);
@@ -70,7 +72,8 @@ class UserFixtures extends Fixture
             ->setEndDate($endDate3)
             ->setEmploymentStatus('saisonnier')
             ->setSocialSecurityNumber('5719752347814')
-            ->setComments('Toujours absent');
+            ->setComments('Toujours absent')
+            ->setImageName('profil.jpg');
 
         $manager->persist($user3);
         $this->addReference('mathieu', $user3);

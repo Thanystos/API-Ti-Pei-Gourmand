@@ -13,12 +13,13 @@ class QueryService
         $this->entityManager = $entityManager;
     }
 
+
+    // Requête générique permettant de trouver une entité en fonction du nom de la classe et de la colonne associée
     public function findOneByKey(string $entityClassName, string $key, $value)
     {
         $repository = $this->entityManager->getRepository($entityClassName);
         $qb = $repository->createQueryBuilder('e');
 
-        // Construire dynamiquement la condition WHERE en fonction de la clé
         switch ($key) {
             case 'username':
                 $qb->andWhere('e.username = :value')->setParameter('value', $value);
@@ -26,7 +27,6 @@ class QueryService
             case 'name':
                 $qb->andWhere('e.name = :value')->setParameter('value', $value);
                 break;
-                // Ajouter d'autres cas selon les besoins
         }
 
         return $qb->getQuery()->getOneOrNullResult();

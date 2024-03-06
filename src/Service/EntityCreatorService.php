@@ -7,7 +7,9 @@ use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -22,30 +24,27 @@ class EntityCreatorService
     private $validator;
     private $passwordHasher;
     private $logger;
+    private $transaction;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, ValidatorInterface $validator, UserPasswordHasherInterface $passwordHasher, LoggerInterface $logger)
+    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, ValidatorInterface $validator, UserPasswordHasherInterface $passwordHasher, LoggerInterface $logger, TransactionService $transaction)
     {
         $this->entityManager = $entityManager;
         $this->serializer = $serializer;
         $this->validator = $validator;
         $this->passwordHasher = $passwordHasher;
         $this->logger = $logger;
-
-        // Activer les points de sauvegarde pour les transactions
-        $this->entityManager->getConnection()->setNestTransactionsWithSavepoints(true);
+        $this->transaction = $transaction;
     }
 
     public function createEntity(Request $request, $entityClassName, array $serializationGroups = [], array $deserializationGroups = [], array $serializationContext = [], bool $isUserEntity = false)
     {
         try {
 
-            $this->entityManager->beginTransaction();
-
             // On utilise le groupe de deserialization pour construire et hydrater notre entité
             $createdEntity = $this->serializer->deserialize($request->getContent(), $entityClassName, 'json', ['groups' => $deserializationGroups] + $serializationContext);
 
             // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
-            $errors = $this->validator->validate($createdEntity, [], []);
+            $errors = $this->validator->validate($createdEntity, null, ['register']);
 
             // Si il y a au moins une erreur
             if (count($errors) > 0) {
@@ -59,9 +58,10 @@ class EntityCreatorService
                 }
 
                 // Je renvoie au client ce tableau et le code d'erreur approprié
-                return new JsonResponse(['errors' => $errorMessages], UtilsService::HTTP_BAD_REQUEST);
+                throw new RuntimeException(json_encode(['errors' => $errorMessages]), UtilsService::HTTP_BAD_REQUEST);
             }
 
+            // Si l'entité créée est un User
             if ($isUserEntity) {
 
                 // Hashage du mot de passe si fourni
@@ -71,9 +71,15 @@ class EntityCreatorService
 
             $data = json_decode($request->getContent(), true);
 
-            if (isset($data['hasImage']) && !$data['hasImage']) {
+            // Si une image n'a pas été fournie
+            if (!$data['hasImage']) {
+
+                // On attribue celle par défaut (son nom ici)
                 $createdEntity->setImageName('default_user_image.png');
             }
+
+            // On démarre une transaction juste avant de tenter de manipuler mes données
+            $this->transaction->beginTransaction();
 
             // Je signale à Doctrine de prendre en compte mon entité User
             $this->entityManager->persist($createdEntity);
@@ -82,7 +88,7 @@ class EntityCreatorService
             $this->entityManager->flush();
 
             // Aucune erreur n'a été levée jusqu'ici, je valide la transaction
-            $this->entityManager->commit();
+            $this->transaction->commitTransaction();
 
             $responseData = [
                 'message' => 'Entité créée avec succès',
@@ -92,19 +98,14 @@ class EntityCreatorService
             return new JsonResponse($responseData, UtilsService::HTTP_OK);
         } catch (\RuntimeException $e) {
 
-            return UtilsService::handleException($e->getMessage(), UtilsService::HTTP_NOT_FOUND, $this->entityManager);
-        } catch (\Exception $e) {
+            return UtilsService::handleException($e->getMessage(), $e->getCode());
+        } catch (Exception $e) {
 
-            return UtilsService::handleException($e->getMessage(), UtilsService::HTTP_INTERNAL_SERVER_ERROR, $this->entityManager);
-        } catch (UniqueConstraintViolationException $e) {
+            if ($this->transaction->isTransactionStarted()) {
+                $this->transaction->rollbackTransaction();
+            }
 
-            return UtilsService::handleException($e->getMessage(), UtilsService::HTTP_BAD_REQUEST, $this->entityManager);
-        } catch (ForeignKeyConstraintViolationException $e) {
-
-            return UtilsService::handleException($e->getMessage(), UtilsService::HTTP_BAD_REQUEST, $this->entityManager);
-        } catch (NotNullConstraintViolationException $e) {
-
-            return UtilsService::handleException($e->getMessage(), UtilsService::HTTP_BAD_REQUEST, $this->entityManager);
+            return $this->transaction->handleException($e);
         }
     }
 }

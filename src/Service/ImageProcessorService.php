@@ -3,8 +3,8 @@
 namespace App\Service;
 
 use App\Entity\User;
-use Exception;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -22,6 +22,7 @@ class ImageProcessorService
     // Permet la mise à jour de l'image et du fichier associé
     public function updateImage($entityToUpdate, $imageFile)
     {
+
         // Si le fichier de mon image est présent
         if (isset($imageFile)) {
 
@@ -33,11 +34,14 @@ class ImageProcessorService
                 // J'en déduis le chemin de l'image par défaut
                 $defaultImagePath = $imagesDirectory . '/default_user_image.png';
 
+                // J'en déduis le chemin de l'image utilisée par les datafixtures (à ne pas supprimer)
+                $dataFixturesImagePath = $imagesDirectory . '/profil.jpg';
+
                 // Je récupère l'ancien path de mon image
                 $oldPath = $imagesDirectory . '/' . $entityToUpdate->getImageName();
 
                 // Si l'ancien path de mon image n'est pas celui de l'image par défaut ou vide
-                if ($oldPath !== $defaultImagePath && $oldPath !== ($imagesDirectory . '/')) {
+                if ($oldPath !== $defaultImagePath && $oldPath !== $dataFixturesImagePath && $oldPath !== ($imagesDirectory . '/')) {
 
                     // Si le fichier existe
                     if (file_exists($oldPath)) {
@@ -56,20 +60,34 @@ class ImageProcessorService
                 // Je déplace mon image dans ce fichier
                 $imageFile->move($imagesDirectory, $newImageName);
             } else {
-                throw new Exception('Aucun fichier image fourni');
+                throw new RuntimeException('Le fichier envoyé n\'est pas une instance de UploadedFile.', UtilsService::HTTP_BAD_REQUEST);
             }
+        } else {
+            throw new RuntimeException('Aucun fichier image fourni.', UtilsService::HTTP_NOT_FOUND);
         }
     }
 
     // Permet la suppression de l'image et du fichier associé
     public function deleteImage($entityClassName, $entity)
     {
-        if ($entityClassName == User::class) {
-            $imagePath = $this->params->get('images_directory') . '/' . $entity->getImageName();
-            $this->logger->info('imagePath = ' . $imagePath);
 
-            if (file_exists($imagePath) && ($entity->getImageName() !== 'default_user_image.png')) {
-                unlink($imagePath);
+        // Si l'image à supprimer est associée à un User
+        if ($entityClassName == User::class) {
+
+            // Je vais chercher le bon dossier où trouver les images des User
+            $imagePath = $this->params->get('images_directory') . '/' . $entity->getImageName();
+
+            // Si on trouve son fichier image
+            if (file_exists($imagePath)) {
+
+                // Et que ce n'est pas celle par défaut
+                if ($entity->getImageName() !== 'default_user_image.png' && $entity->getImageName() !== 'profil.jpg') {
+
+                    // On le supprime
+                    unlink($imagePath);
+                }
+            } else {
+                throw new RuntimeException(sprintf('Aucune image trouvée pour "%s".', $entity->getUsername()), UtilsService::HTTP_NOT_FOUND);
             }
         }
     }

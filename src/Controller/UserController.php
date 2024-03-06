@@ -35,7 +35,7 @@ class UserController
     {
 
         // Utilisation de mon service pour mettre à jour mon User
-        return $this->entityUpdater->updateEntity($this->request, User::class, ['user:read'], ['user:write'], [], true, $id);
+        return $this->entityUpdater->updateEntity($this->request, User::class, ['user:read'], ['user:write'], [], $id);
     }
 
     // Crée un nouveau User avec les informations passées en paramètre
@@ -52,7 +52,7 @@ class UserController
     {
 
         // Utilisation de mon service pour créer mon User
-        return $this->entityUpdater->updateEntity($request, User::class, [], [], [], true, $id, true);
+        return $this->entityUpdater->updateEntity($request, User::class, [], [], [], $id, true);
     }
 
     // Supprime un ou plusieurs User dans les usernames ont été passés en paramètre

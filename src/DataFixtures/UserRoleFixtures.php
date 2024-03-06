@@ -21,21 +21,15 @@ class UserRoleFixtures extends Fixture implements DependentFixtureInterface
 
         $userRole2 = new UserRole();
         $userRole2->setUser($this->getReference('deykyana'))
-            ->setRole($this->getReference('role_cuisinier'));
+            ->setRole($this->getReference('role_admin'));
 
         $manager->persist($userRole2);
 
         $userRole3 = new UserRole();
         $userRole3->setUser($this->getReference('mathieu'))
-            ->setRole($this->getReference('role_admin'));
-
-        $manager->persist($userRole3);
-
-        $userRole4 = new UserRole();
-        $userRole4->setUser($this->getReference('mathieu'))
             ->setRole($this->getReference('role_cuisinier'));
 
-        $manager->persist($userRole4);
+        $manager->persist($userRole3);
 
         $manager->flush();
     }

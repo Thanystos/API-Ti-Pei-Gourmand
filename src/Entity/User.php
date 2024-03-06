@@ -13,7 +13,6 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use Doctrine\ORM\Mapping\OrderBy;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Serializer\Annotation\Groups;
@@ -51,17 +50,17 @@ use Symfony\Component\Validator\Constraints as Assert;
         )
     ]
 )]
-#[UniqueEntity('username', message: 'Ce pseudonyme est déjà utilisé.')]
+#[UniqueEntity('username', message: 'duplicateUsername', groups: ['register', 'update'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user:read', 'userRole:read'])]
-    #[OrderBy(['id' => 'DESC'])]
+    #[Groups(['user:read'])]
     private ?int $id = null;
 
-    #[Assert\NotBlank(message: "Le pseudonyme doit être spécifié.")]
+
+    #[Assert\NotBlank(message: "emptyUsername", groups: ['register'])]
     #[ORM\Column(length: 180)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $username = null;
@@ -69,22 +68,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * @var string The hashed password
      */
-    #[Assert\NotBlank(message: "Le mot de passe doit être spécifié.")]
+    #[Assert\NotBlank(message: "emptyPassword", groups: ['register'])]
     #[ORM\Column]
     #[Groups(['user:write'])]
     private ?string $password = null;
 
-    #[Assert\NotBlank(message: "Le nom doit être spécifié.")]
-    #[ORM\Column(length: 255, nullable: true, options: ["default" => ""])]
+    #[Assert\NotBlank(message: "emptyRealName", groups: ['register'])]
+    #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $realName = null;
 
-    #[Assert\NotBlank(message: "Le numéro de téléphone doit être spécifié.")]
+    #[Assert\NotBlank(message: "emptyPhoneNumber", groups: ['register'])]
     #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $phoneNumber = null;
 
-    #[Assert\NotBlank(message: "L'email doit être spécifié.")]
+    #[Assert\NotBlank(message: "emptyEmail", groups: ['register'])]
     #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $email = null;

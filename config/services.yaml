@@ -43,15 +43,36 @@ services:
     App\Service\EntityCreatorService:
         autowire: true
 
+    App\Service\AssociativeEntityCreatorService:
+        autowire: true
+
     App\Service\EntityUpdaterService:
         autowire: true
-        arguments:   
-            $jwtManager: '@lexik_jwt_authentication.jwt_manager'
 
     App\Service\EntityDeleterService:
         autowire: true
     
+    App\Service\AssociativeEntityDeleterService:
+        autowire: true
+
+    App\Service\EntitiesFinderService:
+        autowire: true
+
+    App\Service\TransactionService:
+        autowire: true
+
     App\Service\QueryService:
         autowire: true
 
+    App\Service\UserTokenGeneratorService:
+        autowire: true
+        arguments:
+            $jwtManager: '@lexik_jwt_authentication.jwt_manager'
+
     # --------------------------------------------------------------------
+
+    App\EventListener\TokenListener:
+        tags:
+            - { name: 'kernel.event_listener', event: 'user.token.generate', method: 'onUserTokenGenerate' }
+        arguments:
+            $jwtManager: '@lexik_jwt_authentication.jwt_manager'
