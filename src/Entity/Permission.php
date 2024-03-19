@@ -23,14 +23,19 @@ class Permission
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['permission:read', 'role:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['rolePermission:read', 'permission:read'])]
+    #[Groups(['permission:read', 'role:read'])]
     private ?string $name = null;
 
     #[ORM\OneToMany(mappedBy: 'permission', targetEntity: RolePermission::class)]
     private Collection $rolePermissions;
+
+    #[ORM\Column(length: 255)]
+    #[Groups(['permission:read', 'role:read'])]
+    private ?string $scope = null;
 
     public function __construct()
     {
@@ -80,6 +85,18 @@ class Permission
                 $rolePermission->setPermission(null);
             }
         }
+
+        return $this;
+    }
+
+    public function getScope(): ?string
+    {
+        return $this->scope;
+    }
+
+    public function setScope(string $scope): static
+    {
+        $this->scope = $scope;
 
         return $this;
     }

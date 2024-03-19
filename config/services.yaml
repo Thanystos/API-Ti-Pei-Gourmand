@@ -32,12 +32,18 @@ services:
     App\Controller\UserController:
         tags: ['controller.service_arguments']
 
-    App\Controller\UserRoleController:
-        tags: ['controller.service_arguments']
-
     App\Controller\RoleController:
         tags: ['controller.service_arguments']
 
+    App\Controller\UserRoleController:
+        tags: ['controller.service_arguments']
+
+    App\Controller\RolePermissionController:
+        tags: ['controller.service_arguments']
+
+    App\Controller\IngredientController:
+        tags: ['controller.service_arguments']
+        
     # --------------------------------------------------------------------
 
     App\Service\EntityCreatorService:

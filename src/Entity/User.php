@@ -50,7 +50,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         )
     ]
 )]
-#[UniqueEntity('username', message: 'duplicateUsername', groups: ['register', 'update'])]
+#[UniqueEntity('username', message: 'duplicateUsername', groups: ['UserRegister', 'UserUpdate'])]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
     #[ORM\Id]
@@ -60,7 +60,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?int $id = null;
 
 
-    #[Assert\NotBlank(message: "emptyUsername", groups: ['register'])]
+    #[Assert\NotBlank(message: "emptyUsername", groups: ['UserRegister'])]
     #[ORM\Column(length: 180)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $username = null;
@@ -68,22 +68,22 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * @var string The hashed password
      */
-    #[Assert\NotBlank(message: "emptyPassword", groups: ['register'])]
+    #[Assert\NotBlank(message: "emptyPassword", groups: ['UserRegister'])]
     #[ORM\Column]
     #[Groups(['user:write'])]
     private ?string $password = null;
 
-    #[Assert\NotBlank(message: "emptyRealName", groups: ['register'])]
+    #[Assert\NotBlank(message: "emptyRealName", groups: ['UserRegister'])]
     #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $realName = null;
 
-    #[Assert\NotBlank(message: "emptyPhoneNumber", groups: ['register'])]
+    #[Assert\NotBlank(message: "emptyPhoneNumber", groups: ['UserRegister'])]
     #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $phoneNumber = null;
 
-    #[Assert\NotBlank(message: "emptyEmail", groups: ['register'])]
+    #[Assert\NotBlank(message: "emptyEmail", groups: ['UserRegister'])]
     #[ORM\Column(length: 255)]
     #[Groups(['user:read', 'user:write'])]
     private ?string $email = null;

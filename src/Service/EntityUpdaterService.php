@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Ingredient;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -10,10 +11,8 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Serializer\SerializerInterface;
 use App\Service\UtilsService;
 use Exception;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTManager;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
-use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class EntityUpdaterService
@@ -39,7 +38,7 @@ class EntityUpdaterService
         $this->userTokenGenerator = $userTokenGenerator;
     }
 
-    public function updateEntity(Request $request, string $entityClassName, array $serializationGroups, array $deserializationGroups, array $serializationContext = [], int $id, bool $processImage = false): JsonResponse
+    public function updateEntity(Request $request, string $entityClassName, array $serializationGroups, array $deserializationGroups, array $serializationContext = [],  int $id, string $validationGroup = '', bool $processImage = false): JsonResponse
     {
         try {
 
@@ -70,39 +69,63 @@ class EntityUpdaterService
                 // On utilise le groupe de deserialization pour construire et hydrater notre entité
                 $updatedEntity = $this->serializer->deserialize($request->getContent(), $entityClassName, 'json', ['groups' => $deserializationGroups] + $serializationContext);
 
-                // Si malgré la maj de l'entité, certains champs supposés être unique n'ont pas changé et ont été renvoyés avec leur ancienne valeur
-                if ($updatedEntity->getUsername() == $entityToUpdate->getUsername()) {
+                $uniqueField = [
+                    User::class => 'getUsername',
+                    Ingredient::class => 'getTitle',
+                ];
 
-                    // On stocke cette ancienne valeur
-                    $originalUsernameValue = $updatedEntity->getUsername();
+                // Vérifie si la classe de l'entité est présente dans le tableau
+                if (isset($uniqueField[$entityClassName])) {
 
-                    // Et on met temporairement une valeur farfelue pour éviter les problèmes d'unicité dans la validation
-                    $updatedEntity->setUsername('Valeur égale. Aucun changement requis');
+                    // Obtenez le nom de la méthode de récupération du champ unique
+                    $getUniqueFieldMethod = $uniqueField[$entityClassName];
 
-                    $isUpdatedUsername = false;
-                } else {
+                    // Obtenez le nom de la méthode de modification du champ unique
+                    $setUniqueFieldMethod = 'set' . ucfirst(substr($getUniqueFieldMethod, 3));
 
-                    // Le Username va changer, il va falloir vérifier si un nouveau token est nécessaire
-                    $isUpdatedUsername = true;
-                }
+                    // Si la méthode existe dans l'entité mise à jour
+                    if (method_exists($updatedEntity, $getUniqueFieldMethod)) {
 
-                // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
-                $errors = $this->validator->validate($updatedEntity, null, ['update']);
+                        // Récupérez la valeur du champ unique
+                        $uniqueFieldValue = $updatedEntity->$getUniqueFieldMethod();
 
-                // Si il y a au moins une erreur
-                if (count($errors) > 0) {
-                    $errorMessages = [];
+                        // Vérifiez si le champ unique n'a pas changé
+                        if ($uniqueFieldValue == $entityToUpdate->$getUniqueFieldMethod()) {
 
-                    // Pour chacune d'entres elles
-                    foreach ($errors as $error) {
+                            // Stockez l'ancienne valeur du champ unique
+                            $originalUniqueFieldValue = $uniqueFieldValue;
 
-                        // Je stocke le message d'erreur lié dans mon tableau d'erreurs
-                        $errorMessages[] = $error->getMessage();
+                            // Modifiez temporairement la valeur du champ unique pour éviter les problèmes d'unicité dans la validation
+                            $updatedEntity->$setUniqueFieldMethod('Valeur égale. Aucun changement requis');
+
+                            $isUpdatedUniqueField = false;
+                        } else {
+                            $isUpdatedUniqueField = true;
+                        }
                     }
-
-                    // Je renvoie au client ce tableau et le code d'erreur approprié
-                    throw new RuntimeException(json_encode(['errors' => $errorMessages]), UtilsService::HTTP_BAD_REQUEST);
                 }
+
+                if ($validationGroup ?? false) {
+
+                    // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
+                    $errors = $this->validator->validate($updatedEntity, null, [$validationGroup]);
+
+                    // Si il y a au moins une erreur
+                    if (count($errors) > 0) {
+                        $errorMessages = [];
+
+                        // Pour chacune d'entres elles
+                        foreach ($errors as $error) {
+
+                            // Je stocke le message d'erreur lié dans mon tableau d'erreurs
+                            $errorMessages[] = $error->getMessage();
+                        }
+
+                        // Je renvoie au client ce tableau et le code d'erreur approprié
+                        throw new RuntimeException(json_encode(['errors' => $errorMessages]), UtilsService::HTTP_BAD_REQUEST);
+                    }
+                }
+
 
                 // Obtient la classe de l'entité
                 $entityClass = new \ReflectionClass($entityToUpdate);
@@ -143,10 +166,10 @@ class EntityUpdaterService
                         } else if (!in_array($propertyName, $excludeProperties)) {
 
                             // Si on était dans le cas vu plus haut de champ unique non modifié
-                            if ($propertyName === 'username' && $updatedValue === 'Valeur égale. Aucun changement requis') {
+                            if (($propertyName === 'username' || $propertyName === 'title') && $updatedValue === 'Valeur égale. Aucun changement requis') {
 
                                 // On réattribue l'ancienne valeur qu'on avait stocké
-                                $property->setValue($entityToUpdate, $originalUsernameValue);
+                                $property->setValue($entityToUpdate, $originalUniqueFieldValue);
                             } else {
 
                                 // Met à jour la valeur de la propriété
@@ -164,13 +187,17 @@ class EntityUpdaterService
             // Aucune erreur n'a été levée jusqu'ici, je valide la transaction
             $this->transaction->commitTransaction();
 
-            // Ajout des données spécifiques à l'entité User à la réponse
-            $responseData['token'] = $isUpdatedUsername ?
-                $this->userTokenGenerator->generateUserToken($entityToUpdate)
-                : null;
+            if ($entityClassName === User::class) {
+
+                // Ajout des données spécifiques à l'entité User à la réponse
+                $responseData['token'] = $isUpdatedUniqueField ?
+                    $this->userTokenGenerator->generateUserToken($entityToUpdate)
+                    : null;
+            }
+
 
             $responseData['message'] = 'Entité mise à jour avec succès';
-            $responseData[strtolower(basename($entityClassName))] = UtilsService::serializeEntity($entityToUpdate, $serializationGroups, $this->serializer);
+            $responseData[strtolower(basename($entityClassName))] = UtilsService::serializeEntity($entityToUpdate, $serializationGroups, $this->serializer, $entityClassName);
 
             return new JsonResponse($responseData, UtilsService::HTTP_OK);
         } catch (\RuntimeException $e) {

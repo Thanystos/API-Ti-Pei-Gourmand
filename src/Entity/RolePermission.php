@@ -2,23 +2,41 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Post;
 use App\Repository\RolePermissionRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: RolePermissionRepository::class)]
+#[ApiResource(
+    operations: [
+        new Post(
+            name: 'register_rolePermissions',
+            uriTemplate: '/role_permissions',
+            controller: 'App\Controller\RolePermissionController::registerRolePermissions'
+        ),
+        new Delete(
+            name: 'delete_rolePermissions',
+            uriTemplate: '/role_permissions',
+            controller: 'App\Controller\RolePermissionController::deleteRolePermissions'
+        )
+    ]
+)]
 class RolePermission
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
+    #[Groups(['role:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'rolePermissions')]
     private ?Role $role = null;
 
     #[ORM\ManyToOne(inversedBy: 'rolePermissions')]
-    #[Groups(['rolePermission:read'])]
+    #[Groups(['role:read'])]
     private ?Permission $permission = null;
 
     public function getId(): ?int

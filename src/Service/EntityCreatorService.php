@@ -36,30 +36,34 @@ class EntityCreatorService
         $this->transaction = $transaction;
     }
 
-    public function createEntity(Request $request, $entityClassName, array $serializationGroups = [], array $deserializationGroups = [], array $serializationContext = [], bool $isUserEntity = false)
+    public function createEntity(Request $request, $entityClassName, array $serializationGroups = [], array $deserializationGroups = [], array $serializationContext = [], string $validationGroup = '', bool $isUserEntity = false)
     {
         try {
 
             // On utilise le groupe de deserialization pour construire et hydrater notre entité
             $createdEntity = $this->serializer->deserialize($request->getContent(), $entityClassName, 'json', ['groups' => $deserializationGroups] + $serializationContext);
 
-            // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
-            $errors = $this->validator->validate($createdEntity, null, ['register']);
+            if ($validationGroup ?? false) {
 
-            // Si il y a au moins une erreur
-            if (count($errors) > 0) {
-                $errorMessages = [];
+                // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
+                $errors = $this->validator->validate($createdEntity, null, [$validationGroup]);
 
-                // Pour chacune d'entres elles
-                foreach ($errors as $error) {
+                // Si il y a au moins une erreur
+                if (count($errors) > 0) {
+                    $errorMessages = [];
 
-                    // Je stocke le message d'erreur lié dans mon tableau d'erreurs
-                    $errorMessages[] = $error->getMessage();
+                    // Pour chacune d'entres elles
+                    foreach ($errors as $error) {
+
+                        // Je stocke le message d'erreur lié dans mon tableau d'erreurs
+                        $errorMessages[] = $error->getMessage();
+                    }
+
+                    // Je renvoie au client ce tableau et le code d'erreur approprié
+                    throw new RuntimeException(json_encode(['errors' => $errorMessages]), UtilsService::HTTP_BAD_REQUEST);
                 }
-
-                // Je renvoie au client ce tableau et le code d'erreur approprié
-                throw new RuntimeException(json_encode(['errors' => $errorMessages]), UtilsService::HTTP_BAD_REQUEST);
             }
+
 
             // Si l'entité créée est un User
             if ($isUserEntity) {
@@ -72,7 +76,7 @@ class EntityCreatorService
             $data = json_decode($request->getContent(), true);
 
             // Si une image n'a pas été fournie
-            if (!$data['hasImage']) {
+            if (empty($data['hasImage']) && $isUserEntity) {
 
                 // On attribue celle par défaut (son nom ici)
                 $createdEntity->setImageName('default_user_image.png');
@@ -92,14 +96,21 @@ class EntityCreatorService
 
             $responseData = [
                 'message' => 'Entité créée avec succès',
-                strtolower(basename($entityClassName)) => UtilsService::serializeEntity($createdEntity, $serializationGroups, $this->serializer),
+                strtolower(basename($entityClassName)) => UtilsService::serializeEntity($createdEntity, $serializationGroups, $this->serializer, $entityClassName),
             ];
 
             return new JsonResponse($responseData, UtilsService::HTTP_OK);
         } catch (\RuntimeException $e) {
+            $this->logger->info('problème de runtime');
+            $this->logger->info('message : ' . $e->getMessage());
+            $this->logger->info('code : ' . $e->getMessage());
 
             return UtilsService::handleException($e->getMessage(), $e->getCode());
         } catch (Exception $e) {
+
+            $this->logger->info('problème de transaction');
+            $this->logger->info('message : ' . $e->getMessage());
+            $this->logger->info('code : ' . $e->getMessage());
 
             if ($this->transaction->isTransactionStarted()) {
                 $this->transaction->rollbackTransaction();

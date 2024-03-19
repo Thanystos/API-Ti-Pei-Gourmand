@@ -18,8 +18,6 @@ use Symfony\Component\Serializer\Annotation\Groups;
             normalizationContext: ['groups' => ['role:read']]
         ),
         new Put(
-            normalizationContext: ['groups' => ['role:read']],
-            denormalizationContext: ['groups' => ['role:write']],
             name: 'update_role',
             uriTemplate: '/roles/{id}',
             controller: 'App\Controller\RoleController::updateRole'
@@ -31,16 +29,17 @@ class Role
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['role:read', 'role:write', 'user:read'])]
+    #[Groups(['role:read', 'user:read'])]
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(['role:read', 'role:write', 'user:read'])]
+    #[Groups(['role:read', 'user:read'])]
     private ?string $name = null;
 
     #[ORM\OneToMany(mappedBy: 'role', targetEntity: UserRole::class)]
     private Collection $userRoles;
 
+    #[Groups(['role:read'])]
     #[ORM\OneToMany(mappedBy: 'role', targetEntity: RolePermission::class)]
     private Collection $rolePermissions;
 

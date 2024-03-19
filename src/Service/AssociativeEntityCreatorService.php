@@ -39,6 +39,11 @@ class AssociativeEntityCreatorService
             $firstEntityName = strtolower(basename($firstEntityClassName));
             $secondEntityName = strtolower(basename($secondEntityClassName));
 
+            $firstEntitySetter = 'set' . basename($firstEntityClassName);
+            $secondEntitySetter = 'set' . basename($secondEntityClassName);
+
+            $secondEntityGetter = 'get' . basename($secondEntityClassName);
+
             $associativeEntities = [];
             $associativeEntities = [];
 
@@ -48,8 +53,8 @@ class AssociativeEntityCreatorService
             // On associe les 2 entités grâce à notre entité d'association
             foreach ($foundEntities['secondEntities'] as $secondEntity) {
                 $associativeEntity = new $associativeEntityName();
-                $associativeEntity->setUser($foundEntities['firstEntity']);
-                $associativeEntity->setRole($secondEntity);
+                $associativeEntity->$firstEntitySetter($foundEntities['firstEntity']);
+                $associativeEntity->$secondEntitySetter($secondEntity);
 
                 // Je signale à Doctrine de prendre en compte mon entité d'association
                 $this->entityManager->persist($associativeEntity);
@@ -77,10 +82,10 @@ class AssociativeEntityCreatorService
                     '@type' => strtolower(basename($associativeEntityName)),
                     'id' => $associativeEntity->getId(),
                     $secondEntityName => [
-                        '@id' => '/api/' . $secondEntityName . '/s/' . $associativeEntity->getRole()->getId(),
+                        '@id' => '/api/' . $secondEntityName . '/s/' . $associativeEntity->$secondEntityGetter()->getId(),
                         '@type' => $secondEntityName,
-                        'id' => $associativeEntity->getRole()->getId(),
-                        'name' => $associativeEntity->getRole()->getName(),
+                        'id' => $associativeEntity->$secondEntityGetter()->getId(),
+                        'name' => $associativeEntity->$secondEntityGetter()->getName(),
                     ],
                 ];
                 $associativeEntitiesDataAdded[] = $associativeEntityDataAdded;

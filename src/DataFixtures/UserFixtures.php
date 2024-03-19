@@ -30,6 +30,12 @@ class UserFixtures extends Fixture
         $hireDate3 = new DateTime('2015-01-19T00:00:00');
         $endDate3 = new DateTime('2035-01-19T00:00:00');
 
+        $hireDate4 = null;
+        $endDate4 = null;
+
+        $hireDate5 = new DateTime('2012-01-19T00:00:00');
+        $endDate5 = new DateTime('2037-01-19T00:00:00');
+
         $user1 = new User();
         $user1->setUsername("Thanystos")
             ->setPassword($this->userPasswordHasher->hashPassword($user1, "Devilplop0"))
@@ -77,6 +83,38 @@ class UserFixtures extends Fixture
 
         $manager->persist($user3);
         $this->addReference('mathieu', $user3);
+
+        $user4 = new User();
+        $user4->setUsername("Jean-François")
+            ->setPassword($this->userPasswordHasher->hashPassword($user4, "Devilplop"))
+            ->setRealName("JOLY")
+            ->setPhoneNumber("2548756214")
+            ->setEmail("jf@live.fr")
+            ->setHireDate($hireDate4)
+            ->setEndDate($endDate4)
+            ->setEmploymentStatus('CDI')
+            ->setSocialSecurityNumber('5792461348513')
+            ->setComments('Très motivé')
+            ->setImageName('profil.jpg');
+
+        $manager->persist($user4);
+        $this->addReference('jeanfrancois', $user4);
+
+        $user5 = new User();
+        $user5->setUsername("Pec")
+            ->setPassword($this->userPasswordHasher->hashPassword($user5, "Devilplop"))
+            ->setRealName("ADRIEN")
+            ->setPhoneNumber("4758612485")
+            ->setEmail("pec@live.fr")
+            ->setHireDate($hireDate5)
+            ->setEndDate($endDate5)
+            ->setEmploymentStatus('CDD')
+            ->setSocialSecurityNumber('6943187624865')
+            ->setComments('Fais le mariole')
+            ->setImageName('profil.jpg');
+
+        $manager->persist($user5);
+        $this->addReference('pec', $user5);
 
         $manager->flush();
     }

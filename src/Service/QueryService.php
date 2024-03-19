@@ -24,6 +24,9 @@ class QueryService
             case 'username':
                 $qb->andWhere('e.username = :value')->setParameter('value', $value);
                 break;
+            case 'title':
+                $qb->andWhere('e.title = :value')->setParameter('value', $value);
+                break;
             case 'name':
                 $qb->andWhere('e.name = :value')->setParameter('value', $value);
                 break;

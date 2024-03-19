@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Ingredient;
 use App\Entity\Role;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -43,6 +44,10 @@ class EntityDeleterService
                 Role::class => [
                     'field' => 'name',
                     'collection' => 'names',
+                ],
+                Ingredient::class => [
+                    'field' => 'title',
+                    'collection' => 'titles',
                 ]
             ];
 
@@ -51,6 +56,7 @@ class EntityDeleterService
 
             // Je crée un tableau contenant les usernames des User à supprimer
             $entitiesToDelete = $data[$properties['collection']];
+            $this->logger->info('entitytodelete : ', [$entitiesToDelete]);
 
             // On démarre une transaction juste avant de tenter de manipuler mes données
             $this->transaction->beginTransaction();
@@ -93,9 +99,15 @@ class EntityDeleterService
                 strtolower(basename($entityClassName)) => $deletedEntityIds,
             ], UtilsService::HTTP_OK);
         } catch (\RuntimeException $e) {
+            $this->logger->info('problème de runtime');
+            $this->logger->info('message : ' . $e->getMessage());
+            $this->logger->info('code : ' . $e->getMessage());
 
             return UtilsService::handleException($e->getMessage(), $e->getCode());
         } catch (Exception $e) {
+            $this->logger->info('problème de runtime');
+            $this->logger->info('message : ' . $e->getMessage());
+            $this->logger->info('code : ' . $e->getMessage());
 
             if ($this->transaction->isTransactionStarted()) {
                 $this->transaction->rollbackTransaction();
