@@ -78,6 +78,14 @@ class Ingredient
     #[Groups(['ingredient:read', 'ingredient:write'])]
     private ?string $unit = null;
 
+    #[ORM\Column]
+    #[Groups(['ingredient:read', 'ingredient:write'])]
+    private ?float $maxQuantity = null;
+
+    #[ORM\Column]
+    #[Groups(['ingredient:read', 'ingredient:write'])]
+    private ?float $percentQuantity = null;
+
     public function __construct()
     {
         $this->dishIngredients = new ArrayCollection();
@@ -174,6 +182,30 @@ class Ingredient
     public function setUnit(string $unit): static
     {
         $this->unit = $unit;
+
+        return $this;
+    }
+
+    public function getMaxQuantity(): ?float
+    {
+        return $this->maxQuantity;
+    }
+
+    public function setMaxQuantity(float $maxQuantity): static
+    {
+        $this->maxQuantity = $maxQuantity;
+
+        return $this;
+    }
+
+    public function getPercentQuantity(): ?float
+    {
+        return $this->percentQuantity;
+    }
+
+    public function setPercentQuantity(float $percentQuantity): static
+    {
+        $this->percentQuantity = $percentQuantity;
 
         return $this;
     }

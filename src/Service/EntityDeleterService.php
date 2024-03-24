@@ -20,8 +20,13 @@ class EntityDeleterService
     private $imageProcessor;
     private $transaction;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, QueryService $queryService, ImageProcessorService $imageProcessor, TransactionService $transaction)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        QueryService $queryService,
+        ImageProcessorService $imageProcessor,
+        TransactionService $transaction
+    ) {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
         $this->queryService = $queryService;
@@ -32,7 +37,6 @@ class EntityDeleterService
     public function deleteEntity(Request $request, string $entityClassName): JsonResponse
     {
         try {
-
             // J'exploite les paramètres de la requête
             $data = json_decode($request->getContent(), true);
 
@@ -63,21 +67,25 @@ class EntityDeleterService
 
             // Pour chaque username on va essayer de trouver une correspondance dans les User
             foreach ($entitiesToDelete as $entity) {
-
                 // Je me sers de la méthode permettant de vérifier si le username appartient à un User
                 $entity = $this->queryService->findOneByKey($entityClassName, $properties['field'], $entity);
 
                 // Si je ne trouve aucune correspondance
                 if (!$entity) {
-                    throw new \RuntimeException(sprintf('L\'entité "%s" n\'existe pas.', $entity), UtilsService::HTTP_NOT_FOUND);
+                    throw new \RuntimeException(
+                        sprintf(
+                            'L\'entité "%s" n\'existe pas.',
+                            $entity
+                        ),
+                        UtilsService::HTTP_NOT_FOUND
+                    );
                 }
 
-                // Je stocke dans mon tableau les ids de toutes les entités 
+                // Je stocke dans mon tableau les ids de toutes les entités
                 $deletedEntityIds[] = $entity->getId();
 
                 // Seules les entités possédant une image peuvent supprimer cette dernière
                 if ($entityClassName === User::class) {
-
                     // Je traite la suppression de mon image
                     $this->imageProcessor->deleteImage($entityClassName, $entity);
                 }

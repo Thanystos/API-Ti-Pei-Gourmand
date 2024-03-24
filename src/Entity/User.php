@@ -309,13 +309,18 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
 
-        /* 
+        /*
             La méthode map itère sur chaque élément de mon tableau userRoles.
-            $userRole représente chaque entrée de userRoles, à partir de laquelle nous récupérons le nom du rôle qui y est contenu.
-            La fonction fn(UserRole $userRole) => $userRole->getRole()->getName() extrait le nom du rôle pour chaque élément.
-            En utilisant array_unique, nous nous assurons que les noms de rôles sont uniques dans le tableau résultant.
+            $userRole représente chaque entrée de userRoles, à partir de laquelle nous récupérons
+            le nom du rôle qui y est contenu. La fonction fn(UserRole $userRole) => $userRole->getRole()->getName()
+            extrait le nom du rôle pour chaque élément.En utilisant array_unique, nous nous assurons que
+            les noms de rôles sont uniques dans le tableau résultant.
         */
-        return array_unique($this->userRoles->map(fn (UserRole $userRole) => $userRole->getRole()->getName())->toArray());
+        return array_unique(
+            $this->userRoles->map(
+                fn (UserRole $userRole) => $userRole->getRole()->getName()
+            )->toArray()
+        );
     }
 
     public function getImageName(): ?string

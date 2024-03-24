@@ -8,7 +8,6 @@ use Doctrine\Persistence\ObjectManager;
 
 class DishFixtures extends Fixture
 {
-
     public function load(ObjectManager $manager)
     {
 

@@ -20,8 +20,13 @@ class AssociativeEntityCreatorService
     private $entitiesFinder;
     private $userTokenGenerator;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, TransactionService $transaction, EntitiesFinderService $entitiesFinder, UserTokenGeneratorService $userTokenGenerator)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        TransactionService $transaction,
+        EntitiesFinderService $entitiesFinder,
+        UserTokenGeneratorService $userTokenGenerator
+    ) {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
         $this->transaction = $transaction;
@@ -29,12 +34,19 @@ class AssociativeEntityCreatorService
         $this->userTokenGenerator = $userTokenGenerator;
     }
 
-    public function createAssociativeEntity(Request $request, string $firstEntityClassName, string $secondEntityClassName, string $associativeEntityName): JsonResponse
-    {
+    public function createAssociativeEntity(
+        Request $request,
+        string $firstEntityClassName,
+        string $secondEntityClassName,
+        string $associativeEntityName
+    ): JsonResponse {
         try {
-
             // Utilisation de mon service pour vérifier l'existance et trouver mes 2 entités
-            $foundEntities = $this->entitiesFinder->findEntities($request, $firstEntityClassName, $secondEntityClassName);
+            $foundEntities = $this->entitiesFinder->findEntities(
+                $request,
+                $firstEntityClassName,
+                $secondEntityClassName
+            );
 
             $firstEntityName = strtolower(basename($firstEntityClassName));
             $secondEntityName = strtolower(basename($secondEntityClassName));
@@ -68,12 +80,14 @@ class AssociativeEntityCreatorService
             // Aucune erreur n'a été levée jusqu'ici, je valide la transaction
             $this->transaction->commitTransaction();
 
-            // L'association a beau avoir été flush, l'entité associée n'est pas mise à jour. Il est donc nécessaire de la refresh
+            // L'association a beau avoir été flush, l'entité associée n'est pas mise à jour. Il faut la refresh
             $this->entityManager->refresh($foundEntities['firstEntity']);
 
             // Ajout des données spécifiques à l'entité User à la réponse
-            $responseData['token'] = (($firstEntityClassName === User::class && $secondEntityClassName === Role::class) && ($foundEntities['isLastMethod'])) ?
-                $this->userTokenGenerator->generateUserToken($foundEntities['firstEntity'])
+            $responseData['token'] = (($firstEntityClassName === User::class
+                && $secondEntityClassName === Role::class)
+                && ($foundEntities['isLastMethod']))
+                ? $this->userTokenGenerator->generateUserToken($foundEntities['firstEntity'])
                 : null;
 
             foreach ($associativeEntities as $associativeEntity) {
@@ -82,7 +96,8 @@ class AssociativeEntityCreatorService
                     '@type' => strtolower(basename($associativeEntityName)),
                     'id' => $associativeEntity->getId(),
                     $secondEntityName => [
-                        '@id' => '/api/' . $secondEntityName . '/s/' . $associativeEntity->$secondEntityGetter()->getId(),
+                        '@id' =>
+                        '/api/' . $secondEntityName . '/s/' . $associativeEntity->$secondEntityGetter()->getId(),
                         '@type' => $secondEntityName,
                         'id' => $associativeEntity->$secondEntityGetter()->getId(),
                         'name' => $associativeEntity->$secondEntityGetter()->getName(),
@@ -97,10 +112,8 @@ class AssociativeEntityCreatorService
 
             return new JsonResponse($responseData, JsonResponse::HTTP_CREATED);
         } catch (RuntimeException $e) {
-
             return UtilsService::handleException($e->getMessage(), $e->getCode());
         } catch (Exception $e) {
-
             if ($this->transaction->isTransactionStarted()) {
                 $this->transaction->rollbackTransaction();
             }

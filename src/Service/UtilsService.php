@@ -40,8 +40,10 @@ class UtilsService
     }
 
     // Permet de centraliser la gestion des exceptions et de renvoyer le message d'erreur associé
-    public static function handleException($errorMessage, int $errorCode = JsonResponse::HTTP_INTERNAL_SERVER_ERROR): JsonResponse
-    {
+    public static function handleException(
+        $errorMessage,
+        int $errorCode = JsonResponse::HTTP_INTERNAL_SERVER_ERROR
+    ): JsonResponse {
         $errorData = is_array($errorMessage) ?
             ['errors' => $errorMessage]
             : ['error' => $errorMessage];

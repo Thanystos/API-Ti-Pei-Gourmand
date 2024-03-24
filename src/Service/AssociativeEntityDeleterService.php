@@ -20,8 +20,13 @@ class AssociativeEntityDeleterService
     private $entitiesFinder;
     private $userTokenGenerator;
 
-    public function __construct(EntityManagerInterface $entityManager, LoggerInterface $logger, TransactionService $transaction, EntitiesFinderService $entitiesFinder, UserTokenGeneratorService $userTokenGenerator)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        TransactionService $transaction,
+        EntitiesFinderService $entitiesFinder,
+        UserTokenGeneratorService $userTokenGenerator
+    ) {
         $this->entityManager = $entityManager;
         $this->logger = $logger;
         $this->transaction = $transaction;
@@ -29,12 +34,19 @@ class AssociativeEntityDeleterService
         $this->userTokenGenerator = $userTokenGenerator;
     }
 
-    public function deleteAssociativeEntity(Request $request, string $firstEntityClassName, string $secondEntityClassName, string $associativeEntityClassName): JsonResponse
-    {
+    public function deleteAssociativeEntity(
+        Request $request,
+        string $firstEntityClassName,
+        string $secondEntityClassName,
+        string $associativeEntityClassName
+    ): JsonResponse {
         try {
-
             // Utilisation de mon service pour vérifier l'existance et trouver mes 2 entités
-            $foundEntities = $this->entitiesFinder->findEntities($request, $firstEntityClassName, $secondEntityClassName);
+            $foundEntities = $this->entitiesFinder->findEntities(
+                $request,
+                $firstEntityClassName,
+                $secondEntityClassName
+            );
 
             $firstEntityName = strtolower(basename($firstEntityClassName));
             $secondEntityName = strtolower(basename($secondEntityClassName));
@@ -48,13 +60,22 @@ class AssociativeEntityDeleterService
                 $associativeEntityRepository = $this->entityManager->getRepository($associativeEntityClassName);
 
                 if (!$associativeEntityRepository) {
-                    throw new RuntimeException('Le repository de l\'entité n\'a pas été trouvé.', UtilsService::HTTP_NOT_FOUND);
+                    throw new RuntimeException(
+                        'Le repository de l\'entité n\'a pas été trouvé.',
+                        UtilsService::HTTP_NOT_FOUND
+                    );
                 }
 
-                $associativeEntity = $associativeEntityRepository->findOneBy([$firstEntityName => $foundEntities['firstEntity'], $secondEntityName => $secondEntity]);
+                $associativeEntity = $associativeEntityRepository->findOneBy(
+                    [$firstEntityName => $foundEntities['firstEntity'],
+                    $secondEntityName => $secondEntity]
+                );
 
                 if (!$associativeEntity) {
-                    throw new RuntimeException('L\'entité d\'association pour une des entités n\'a pas été trouvée', UtilsService::HTTP_NOT_FOUND);
+                    throw new RuntimeException(
+                        'L\'entité d\'association pour une des entités n\'a pas été trouvée',
+                        UtilsService::HTTP_NOT_FOUND
+                    );
                 }
 
                 $associativeEntitiesDataRemoved[] = $associativeEntity->getId();
@@ -65,13 +86,16 @@ class AssociativeEntityDeleterService
 
             $this->transaction->commitTransaction();
 
-            // L'association a beau avoir été flush, l'entité associée n'est pas mise à jour. Il est donc nécessaire de la refresh
+            // L'association a beau avoir été flush, l'entité associée n'est pas mise à jour. Il faut la refresh.
             $this->entityManager->refresh($foundEntities['firstEntity']);
 
             // Ajout des données spécifiques à l'entité User à la réponse
-            $responseData['token'] = ($firstEntityClassName === User::class && $secondEntityClassName === Role::class) ?
-                $this->userTokenGenerator->generateUserToken($foundEntities['firstEntity'])
-                : null;
+            $responseData['token'] = (
+                $firstEntityClassName === User::class
+                && $secondEntityClassName === Role::class
+            )
+            ? $this->userTokenGenerator->generateUserToken($foundEntities['firstEntity'])
+            : null;
 
             $responseData['message'] = 'Association(s) supprimée(s) avec succès';
             $responseData[$firstEntityName] = $foundEntities['firstEntityId'];
@@ -79,10 +103,8 @@ class AssociativeEntityDeleterService
 
             return new JsonResponse($responseData, JsonResponse::HTTP_OK);
         } catch (RuntimeException $e) {
-
             return UtilsService::handleException($e->getMessage(), $e->getCode());
         } catch (Exception $e) {
-
             if ($this->transaction->isTransactionStarted()) {
                 $this->transaction->rollbackTransaction();
             }

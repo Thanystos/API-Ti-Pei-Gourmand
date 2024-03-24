@@ -15,8 +15,11 @@ class RoleController
     private $entityUpdater;
     private $entityCreator;
 
-    public function __construct(Request $request, EntityUpdaterService $entityUpdater, EntityCreatorService $entityCreator)
-    {
+    public function __construct(
+        Request $request,
+        EntityUpdaterService $entityUpdater,
+        EntityCreatorService $entityCreator
+    ) {
         $this->request = $request;
         $this->entityUpdater = $entityUpdater;
         $this->entityCreator = $entityCreator;
@@ -28,7 +31,15 @@ class RoleController
     {
 
         // Utilisation de mon service pour mettre à jour mon Role
-        return $this->entityUpdater->updateEntity($this->request, Role::class, ['role:read'], ['role:write'], [], false, $id);
+        return $this->entityUpdater->updateEntity(
+            $this->request,
+            Role::class,
+            ['role:read'],
+            ['role:write'],
+            [],
+            false,
+            $id
+        );
     }
 
     // Crée de nouvelles associations entre un User et un ou plusieurs rôles

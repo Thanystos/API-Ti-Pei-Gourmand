@@ -20,8 +20,13 @@ class UserController
     private $logger;
 
 
-    public function __construct(Request $request, EntityUpdaterService $entityUpdater, EntityCreatorService $entityCreator, EntityDeleterService $entityDeleter, LoggerInterface $logger)
-    {
+    public function __construct(
+        Request $request,
+        EntityUpdaterService $entityUpdater,
+        EntityCreatorService $entityCreator,
+        EntityDeleterService $entityDeleter,
+        LoggerInterface $logger
+    ) {
         $this->request = $request;
         $this->entityUpdater = $entityUpdater;
         $this->entityCreator = $entityCreator;
@@ -35,7 +40,15 @@ class UserController
     {
 
         // Utilisation de mon service pour mettre à jour mon User
-        return $this->entityUpdater->updateEntity($this->request, User::class, ['user:read'], ['user:write'], [], $id, 'UserUpdate');
+        return $this->entityUpdater->updateEntity(
+            $this->request,
+            User::class,
+            ['user:read'],
+            ['user:write'],
+            $id,
+            [],
+            'UserUpdate'
+        );
     }
 
     // Crée un nouveau User avec les informations passées en paramètre
@@ -44,7 +57,15 @@ class UserController
     {
 
         // Utilisation de mon service pour créer mon User
-        return $this->entityCreator->createEntity($this->request, User::class, ['user:read'], ['user:write'], [], 'UserRegister', true);
+        return $this->entityCreator->createEntity(
+            $this->request,
+            User::class,
+            ['user:read'],
+            ['user:write'],
+            [],
+            'UserRegister',
+            true
+        );
     }
 
     #[Route('api/users/{id}', name: 'register_user_image', methods: ['POST'])]

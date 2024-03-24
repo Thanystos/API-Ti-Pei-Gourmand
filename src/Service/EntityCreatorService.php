@@ -18,7 +18,6 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class EntityCreatorService
 {
-
     private $entityManager;
     private $serializer;
     private $validator;
@@ -26,8 +25,14 @@ class EntityCreatorService
     private $logger;
     private $transaction;
 
-    public function __construct(EntityManagerInterface $entityManager, SerializerInterface $serializer, ValidatorInterface $validator, UserPasswordHasherInterface $passwordHasher, LoggerInterface $logger, TransactionService $transaction)
-    {
+    public function __construct(
+        EntityManagerInterface $entityManager,
+        SerializerInterface $serializer,
+        ValidatorInterface $validator,
+        UserPasswordHasherInterface $passwordHasher,
+        LoggerInterface $logger,
+        TransactionService $transaction
+    ) {
         $this->entityManager = $entityManager;
         $this->serializer = $serializer;
         $this->validator = $validator;
@@ -36,15 +41,25 @@ class EntityCreatorService
         $this->transaction = $transaction;
     }
 
-    public function createEntity(Request $request, $entityClassName, array $serializationGroups = [], array $deserializationGroups = [], array $serializationContext = [], string $validationGroup = '', bool $isUserEntity = false)
-    {
+    public function createEntity(
+        Request $request,
+        $entityClassName,
+        array $serializationGroups = [],
+        array $deserializationGroups = [],
+        array $serializationContext = [],
+        string $validationGroup = '',
+        bool $isUserEntity = false
+    ) {
         try {
-
             // On utilise le groupe de deserialization pour construire et hydrater notre entité
-            $createdEntity = $this->serializer->deserialize($request->getContent(), $entityClassName, 'json', ['groups' => $deserializationGroups] + $serializationContext);
+            $createdEntity = $this->serializer->deserialize(
+                $request->getContent(),
+                $entityClassName,
+                'json',
+                ['groups' => $deserializationGroups] + $serializationContext
+            );
 
             if ($validationGroup ?? false) {
-
                 // Je recherche les erreurs liées aux contraintes de validation de mes colonnes
                 $errors = $this->validator->validate($createdEntity, null, [$validationGroup]);
 
@@ -54,20 +69,21 @@ class EntityCreatorService
 
                     // Pour chacune d'entres elles
                     foreach ($errors as $error) {
-
                         // Je stocke le message d'erreur lié dans mon tableau d'erreurs
                         $errorMessages[] = $error->getMessage();
                     }
 
                     // Je renvoie au client ce tableau et le code d'erreur approprié
-                    throw new RuntimeException(json_encode(['errors' => $errorMessages]), UtilsService::HTTP_BAD_REQUEST);
+                    throw new RuntimeException(
+                        json_encode(['errors' => $errorMessages]),
+                        UtilsService::HTTP_BAD_REQUEST
+                    );
                 }
             }
 
 
             // Si l'entité créée est un User
             if ($isUserEntity) {
-
                 // Hashage du mot de passe si fourni
                 $hashedPassword = $this->passwordHasher->hashPassword($createdEntity, $createdEntity->getPassword());
                 $createdEntity->setPassword($hashedPassword);
@@ -77,7 +93,6 @@ class EntityCreatorService
 
             // Si une image n'a pas été fournie
             if (empty($data['hasImage']) && $isUserEntity) {
-
                 // On attribue celle par défaut (son nom ici)
                 $createdEntity->setImageName('default_user_image.png');
             }
@@ -96,7 +111,14 @@ class EntityCreatorService
 
             $responseData = [
                 'message' => 'Entité créée avec succès',
-                strtolower(basename($entityClassName)) => UtilsService::serializeEntity($createdEntity, $serializationGroups, $this->serializer, $entityClassName),
+                strtolower(
+                    basename($entityClassName)
+                ) => UtilsService::serializeEntity(
+                    $createdEntity,
+                    $serializationGroups,
+                    $this->serializer,
+                    $entityClassName
+                ),
             ];
 
             return new JsonResponse($responseData, UtilsService::HTTP_OK);
@@ -107,7 +129,6 @@ class EntityCreatorService
 
             return UtilsService::handleException($e->getMessage(), $e->getCode());
         } catch (Exception $e) {
-
             $this->logger->info('problème de transaction');
             $this->logger->info('message : ' . $e->getMessage());
             $this->logger->info('code : ' . $e->getMessage());

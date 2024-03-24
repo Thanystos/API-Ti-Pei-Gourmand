@@ -28,7 +28,10 @@ class EntitiesFinderService
 
         // On léve une exception si ce n'est pas le cas
         if (!$firstEntityRepository) {
-            throw new RuntimeException('Le repository de la première entité n\'a pas été trouvé.', UtilsService::HTTP_NOT_FOUND);
+            throw new RuntimeException(
+                'Le repository de la première entité n\'a pas été trouvé.',
+                UtilsService::HTTP_NOT_FOUND
+            );
         }
 
         // On trouve l'entité grâce à son id passé dans le body de la request
@@ -36,7 +39,10 @@ class EntitiesFinderService
 
         // Si on ne la trouve pas on lève une exception
         if (!$firstEntity) {
-            throw new RuntimeException('L\'entité de la première entité avec l\'ID spécifié n\'a pas été trouvée.', UtilsService::HTTP_NOT_FOUND);
+            throw new RuntimeException(
+                'L\'entité de la première entité avec l\'ID spécifié n\'a pas été trouvée.',
+                UtilsService::HTTP_NOT_FOUND
+            );
         }
 
         // On récupère son id
@@ -46,15 +52,24 @@ class EntitiesFinderService
         $secondEntityRepository = $this->entityManager->getRepository($secondEntityClassName);
 
         if (!$secondEntityRepository) {
-            throw new RuntimeException('Le repository de la première entité n\'a pas été trouvé.', UtilsService::HTTP_NOT_FOUND);
+            throw new RuntimeException(
+                'Le repository de la première entité n\'a pas été trouvé.',
+                UtilsService::HTTP_NOT_FOUND
+            );
         }
 
         // On trouve les entités grâce aux ids passés dans le body de la request
         $secondEntities = $secondEntityRepository->findBy(['id' => $requestData['secondEntityIds']]);
 
-        // Si on trouve moins d'entités qu'il n'y a d'id dans le body de la request c'est que certaines n'ont pas été trouvées
+        /*
+            Si on trouve moins d'entités qu'il n'y a d'id dans le body de la request
+            c'est que certaines n'ont pas été trouvées
+        */
         if (count($secondEntities) !== count($requestData['secondEntityIds'])) {
-            throw new RuntimeException('Certaines des deuxièmes entités n\'ont pas été trouvées', UtilsService::HTTP_NOT_FOUND);
+            throw new RuntimeException(
+                'Certaines des deuxièmes entités n\'ont pas été trouvées',
+                UtilsService::HTTP_NOT_FOUND
+            );
         }
 
         return [

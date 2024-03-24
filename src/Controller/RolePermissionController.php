@@ -19,8 +19,12 @@ class RolePermissionController
     private $associativeEntityCreator;
     private $associativeEntityDeleter;
 
-    public function __construct(LoggerInterface $logger, Request $request, AssociativeEntityCreatorService $associativeEntityCreator, AssociativeEntityDeleterService $associativeDeleter)
-    {
+    public function __construct(
+        LoggerInterface $logger,
+        Request $request,
+        AssociativeEntityCreatorService $associativeEntityCreator,
+        AssociativeEntityDeleterService $associativeDeleter
+    ) {
         $this->logger = $logger;
         $this->request = $request;
         $this->associativeEntityCreator = $associativeEntityCreator;
@@ -31,13 +35,23 @@ class RolePermissionController
     #[Route('/api/role_permissions', name: 'register_rolePermissions', methods: ['POST'])]
     public function registerRolePermissions(): JsonResponse
     {
-        return $this->associativeEntityCreator->createAssociativeEntity($this->request, Role::class, Permission::class, RolePermission::class);
+        return $this->associativeEntityCreator->createAssociativeEntity(
+            $this->request,
+            Role::class,
+            Permission::class,
+            RolePermission::class
+        );
     }
 
     // Supprime une ou plusieurs associations entre un Role et une permission
     #[Route('/api/role_permissions', name: 'delete_rolePermissions', methods: ['DELETE'])]
     public function deleteRolePermissions(): JsonResponse
     {
-        return $this->associativeEntityDeleter->deleteAssociativeEntity($this->request, Role::class, Permission::class, RolePermission::class);
+        return $this->associativeEntityDeleter->deleteAssociativeEntity(
+            $this->request,
+            Role::class,
+            Permission::class,
+            RolePermission::class
+        );
     }
 }

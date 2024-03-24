@@ -7,7 +7,6 @@ use Symfony\Bundle\SecurityBundle\Security;
 
 class UserTokenGeneratorService
 {
-
     private $jwtManager;
     private $security;
 

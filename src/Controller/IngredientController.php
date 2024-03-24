@@ -20,8 +20,13 @@ class IngredientController
     private $logger;
 
 
-    public function __construct(Request $request, EntityUpdaterService $entityUpdater, EntityCreatorService $entityCreator, EntityDeleterService $entityDeleter, LoggerInterface $logger)
-    {
+    public function __construct(
+        Request $request,
+        EntityUpdaterService $entityUpdater,
+        EntityCreatorService $entityCreator,
+        EntityDeleterService $entityDeleter,
+        LoggerInterface $logger
+    ) {
         $this->request = $request;
         $this->entityUpdater = $entityUpdater;
         $this->entityCreator = $entityCreator;
@@ -35,7 +40,15 @@ class IngredientController
     {
 
         // Utilisation de mon service pour mettre à jour mon Ingredient
-        return $this->entityUpdater->updateEntity($this->request, Ingredient::class, ['ingredient:read'], ['ingredient:write'], [], $id, 'IngredientUpdate');
+        return $this->entityUpdater->updateEntity(
+            $this->request,
+            Ingredient::class,
+            ['ingredient:read'],
+            ['ingredient:write'],
+            $id,
+            [],
+            'IngredientUpdate'
+        );
     }
 
     // Crée un nouveau Ingredient avec les informations passées en paramètre
@@ -44,7 +57,14 @@ class IngredientController
     {
 
         // Utilisation de mon service pour créer mon Ingredient
-        return $this->entityCreator->createEntity($this->request, Ingredient::class, ['ingredient:read'], ['ingredient:write'], [], 'IngredientRegister');
+        return $this->entityCreator->createEntity(
+            $this->request,
+            Ingredient::class,
+            ['ingredient:read'],
+            ['ingredient:write'],
+            [],
+            'IngredientRegister'
+        );
     }
 
     #[Route('api/ingredients/{id}', name: 'register_ingredient_image', methods: ['POST'])]

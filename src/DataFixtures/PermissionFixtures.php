@@ -8,7 +8,6 @@ use App\Entity\Permission;
 
 class PermissionFixtures extends Fixture
 {
-
     public function load(ObjectManager $manager)
     {
 

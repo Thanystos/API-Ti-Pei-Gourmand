@@ -8,7 +8,6 @@ use Doctrine\Persistence\ObjectManager;
 
 class IngredientFixtures extends Fixture
 {
-
     public function load(ObjectManager $manager)
     {
 
@@ -17,6 +16,8 @@ class IngredientFixtures extends Fixture
         $ingredient1->setTitle('Tomate')
             ->setCategory('Fruits')
             ->setQuantity(200)
+            ->setMaxQuantity(300)
+            ->setPercentQuantity(66.6)
             ->setUnit('Kg')
             ->setIsAllergen(false);
 
@@ -27,8 +28,10 @@ class IngredientFixtures extends Fixture
         $ingredient2->setTitle('Fromage')
             ->setCategory('Produits laitiers')
             ->setQuantity(150)
+            ->setMaxQuantity(200)
+            ->setPercentQuantity(75)
             ->setUnit('Kg')
-            ->setIsAllergen(false);
+            ->setIsAllergen(true);
 
         $manager->persist($ingredient2);
         $this->addReference('fromage', $ingredient2);
@@ -37,8 +40,10 @@ class IngredientFixtures extends Fixture
         $ingredient3->setTitle('Piment')
             ->setCategory('Condiment')
             ->setQuantity(20)
+            ->setMaxQuantity(25)
+            ->setPercentQuantity(80)
             ->setUnit('Kg')
-            ->setIsAllergen(false);
+            ->setIsAllergen(true);
 
         $manager->persist($ingredient3);
         $this->addReference('piment', $ingredient3);
@@ -47,6 +52,8 @@ class IngredientFixtures extends Fixture
         $ingredient4->setTitle('Steak de boeuf')
             ->setCategory('Viande')
             ->setQuantity(80)
+            ->setMaxQuantity(150)
+            ->setPercentQuantity(53.3)
             ->setUnit('Kg')
             ->setIsAllergen(false);
 
@@ -57,8 +64,10 @@ class IngredientFixtures extends Fixture
         $ingredient5->setTitle('Lait')
             ->setCategory('Produits laitiers')
             ->setQuantity(200)
+            ->setMaxQuantity(200)
+            ->setPercentQuantity(100)
             ->setUnit('Kg')
-            ->setIsAllergen(false);
+            ->setIsAllergen(true);
 
         $manager->persist($ingredient5);
         $this->addReference('lait', $ingredient5);
